@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reserveringswidget — Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f5f5f7; font-family: 'Inter', -apple-system, sans-serif; padding: 40px 24px; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  .card { background: #fff; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 16px 48px rgba(0,0,0,0.07); padding: 36px 32px; max-width: 480px; margin: 0 auto; }
+  h2 { font-size: 22px; font-weight: 600; color: #1d1d1f; margin-bottom: 4px; text-align: center; }
+  .subtitle { font-size: 14px; color: #86868b; text-align: center; margin-bottom: 28px; }
+
+  .steps { display: flex; align-items: center; justify-content: center; margin-bottom: 32px; }
+  .step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+  .step-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .step-label { font-size: 11px; white-space: nowrap; }
+  .step-line { width: 48px; height: 2px; margin: 0 4px; margin-bottom: 18px; transition: background 0.2s; }
+
+  .field { margin-bottom: 18px; }
+  label { display: block; font-size: 13px; font-weight: 500; color: #1d1d1f; margin-bottom: 6px; }
+
+  input[type="date"] {
+    width: 100%; background: #f5f5f7; border: 1.5px solid transparent; border-radius: 10px;
+    padding: 13px 14px; font-family: inherit; font-size: 15px; color: #1d1d1f; outline: none;
+    transition: border-color 0.15s; -webkit-appearance: none; appearance: none;
+  }
+  input[type="date"]:focus { background: #fff; border-color: #0071e3; box-shadow: 0 0 0 3px rgba(0,113,227,0.1); }
+
+  input[type="text"], input[type="email"], input[type="tel"], textarea {
+    width: 100%; background: #f5f5f7; border: 1.5px solid transparent; border-radius: 10px;
+    padding: 13px 14px; font-family: inherit; font-size: 15px; color: #1d1d1f; outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus, input[type="email"]:focus, input[type="tel"]:focus, textarea:focus {
+    background: #fff; border-color: #0071e3; box-shadow: 0 0 0 3px rgba(0,113,227,0.1);
+  }
+  textarea { height: 80px; resize: vertical; }
+
+  .btn-primary { width: 100%; padding: 14px; background: #0071e3; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 500; transition: background 0.15s; margin-top: 4px; }
+  .btn-primary:hover { background: #0077ed; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary { padding: 14px 20px; background: #f5f5f7; color: #1d1d1f; border: none; border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 500; }
+  .btn-row { display: flex; gap: 8px; }
+
+  .guest-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .guest-btn { width: 44px; height: 44px; border-radius: 10px; border: 1.5px solid #e5e5ea; background: #fff; font-family: inherit; font-size: 14px; font-weight: 500; color: #1d1d1f; cursor: pointer; transition: all 0.15s; }
+  .guest-btn.selected { background: #0071e3; border-color: #0071e3; color: #fff; }
+
+  .period-title { font-size: 11px; font-weight: 600; color: #86868b; text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 8px; }
+  .slot-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .slot-btn { padding: 10px 16px; border-radius: 10px; border: 1.5px solid #e5e5ea; background: #fff; font-family: inherit; font-size: 14px; font-weight: 500; color: #1d1d1f; cursor: pointer; transition: all 0.15s; }
+  .slot-btn:hover { border-color: #0071e3; }
+  .slot-btn.selected { background: #0071e3; border-color: #0071e3; color: #fff; }
+
+  .summary { background: #f5f5f7; border-radius: 14px; padding: 20px 24px; margin-bottom: 24px; }
+  .summary h3 { font-size: 15px; font-weight: 600; color: #1d1d1f; margin-bottom: 14px; }
+  .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e5ea; }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-label { font-size: 13px; color: #86868b; }
+  .summary-val { font-size: 14px; font-weight: 500; color: #1d1d1f;  }
+
+  .error-msg { font-size: 13px; color: #ff3b30; background: rgba(255,59,48,0.06); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; text-align: center; }
+  .no-slots { background: #fff2f2; border: 1px solid #ffcdd2; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #cc0000; }
+  .closed-notice { background: #fff2f2; border: 1px solid #ffcdd2; border-radius: 10px; padding: 14px 16px; font-size: 14px; color: #cc0000; font-weight: 500; display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+
+  .success { text-align: center; padding: 20px 0; }
+  .success .icon { font-size: 48px; margin-bottom: 16px; }
+
+  /* Gesloten datum styling in de date picker via datalist - werkt niet native, dus we tonen een melding */
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Reserveren</h2>
+  <p class="subtitle">De 3 Ster · Otterlo</p>
+  <div class="steps" id="steps"></div>
+  <div id="app"></div>
+</div>
+
+<script>
+const API = "";  // leeg = zelfde server (via Vite proxy)
+const STEPS = ["Datum & tijd", "Gegevens", "Bevestig"];
+
+let state = {
+  step: 0, date: "", time: "", guests: 2,
+  name: "", email: "", phone: "", notes: "",
+  slots: [], loadingSlots: false, submitting: false, done: false, error: "",
+  settings: null, dayStatus: null, // null | "open" | "closed" | "no_slots"
+};
+
+async function loadSettings() {
+  try {
+    const res = await fetch(`${API}/api/settings`);
+    if (res.ok) state.settings = await res.json();
+  } catch(e) {}
+}
+
+function isDayClosed(dateStr) {
+  if (!state.settings) return false;
+  const openDays = (state.settings.open_days || "").split(",").filter(Boolean).map(Number);
+  const closedDates = Array.isArray(state.settings.closed_dates) ? state.settings.closed_dates : [];
+  const jsDay = new Date(dateStr + "T12:00:00").getDay();
+  const isRegular = !openDays.includes(jsDay);
+  const isExtra = closedDates.some(c => c.date && c.date.slice(0,10) === dateStr);
+  return isRegular || isExtra;
+}
+
+function getClosedReason(dateStr) {
+  if (!state.settings) return null;
+  const closedDates = Array.isArray(state.settings.closed_dates) ? state.settings.closed_dates : [];
+  const entry = closedDates.find(c => c.date && c.date.slice(0,10) === dateStr);
+  return entry?.reason || null;
+}
+
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function fmtDate(str) {
+  if (!str) return "";
+  return new Date(str+"T12:00:00").toLocaleDateString("nl-NL",{ weekday:"long", day:"numeric", month:"long" });
+}
+
+async function loadSlots(date) {
+  state.loadingSlots = true; state.time = ""; state.dayStatus = null;
+  render();
+
+  if (isDayClosed(date)) {
+    state.slots = []; state.loadingSlots = false; state.dayStatus = "closed";
+    render(); return;
+  }
+
+  try {
+    const res = await fetch(`${API}/api/slots/${date}`);
+    const data = await res.json();
+    state.slots = Array.isArray(data) ? data : [];
+    const available = state.slots.filter(s => s.available);
+    state.dayStatus = available.length > 0 ? "open" : "no_slots";
+  } catch(e) { state.slots = []; state.dayStatus = "no_slots"; }
+  state.loadingSlots = false;
+  render();
+}
+
+async function submit() {
+  state.submitting = true; state.error = ""; render();
+  try {
+    const res = await fetch(`${API}/api/reservations`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ name:state.name, email:state.email, phone:state.phone, date:state.date, time:state.time, guests:state.guests, notes:state.notes })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Er ging iets mis");
+    state.done = true;
+  } catch(e) { state.error = e.message; }
+  state.submitting = false; render();
+}
+
+function renderSteps() {
+  document.getElementById("steps").innerHTML = STEPS.map((label, i) => {
+    const done = i < state.step, active = i === state.step;
+    const bg = done ? "#30d158" : active ? "#0071e3" : "#e5e5ea";
+    const col = (done||active) ? "#fff" : "#86868b";
+    const lblCol = done ? "#30d158" : active ? "#0071e3" : "#86868b";
+    const lineBg = done ? "#30d158" : "#e5e5ea";
+    return `<div class="step-wrap">
+      <div class="step-dot" style="background:${bg};color:${col}">${done?"✓":i+1}</div>
+      <div class="step-label" style="color:${lblCol};font-weight:${active?500:400}">${label}</div>
+    </div>${i<STEPS.length-1?`<div class="step-line" style="background:${lineBg}"></div>`:""}`;
+  }).join("");
+}
+
+function render() {
+  renderSteps();
+  const app = document.getElementById("app");
+
+  if (state.done) {
+    app.innerHTML = `<div class="success">
+      <div class="icon">✅</div>
+      <h2 style="font-size:22px;font-weight:600;color:#1d1d1f;margin-bottom:8px">Reservering ontvangen!</h2>
+      <p style="font-size:15px;color:#86868b;line-height:1.6;margin-bottom:24px">Bedankt ${state.name}! Uw reservering is in goede orde ontvangen.${state.email?"<br>U ontvangt een bevestiging per e-mail.":""}</p>
+      <div class="summary" style="text-align:left">
+        <div class="summary-row"><span class="summary-label">Datum</span><span class="summary-val">${fmtDate(state.date)}</span></div>
+        <div class="summary-row"><span class="summary-label">Tijd</span><span class="summary-val">${state.time}</span></div>
+        <div class="summary-row"><span class="summary-label">Personen</span><span class="summary-val">${state.guests}</span></div>
+      </div>
+      <button class="btn-secondary" onclick="resetForm()">Nieuwe reservering</button>
+    </div>`; return;
+  }
+
+  if (state.step === 0) {
+    const available = state.slots.filter(s => s.available);
+    const lunch = available.filter(s => s.period==="lunch");
+    const dinner = available.filter(s => s.period==="dinner");
+    const closed = state.dayStatus === "closed";
+    const noSlots = state.dayStatus === "no_slots";
+    const canProceed = state.date && state.time && !closed;
+
+    app.innerHTML = `
+      <div class="field">
+        <label>Datum</label>
+        <input type="date" id="date-input" value="${state.date}" min="${today()}" />
+        ${closed ? `<div class="closed-notice">🔴 ${getClosedReason(state.date) ? `Gesloten — ${getClosedReason(state.date)}` : "Op deze dag zijn wij gesloten"}</div>` : ""}
+      </div>
+      ${state.date && !closed ? `
+      <div class="field">
+        <label>Aantal personen</label>
+        <div class="guest-grid">${[1,2,3,4,5,6,7,8].map(n=>`<button class="guest-btn ${state.guests===n?"selected":""}" onclick="setGuests(${n})">${n}</button>`).join("")}</div>
+      </div>
+      <div class="field">
+        <label>Kies een tijd</label>
+        ${state.loadingSlots ? "<p style='font-size:13px;color:#86868b'>Beschikbaarheid laden...</p>" :
+          noSlots ? "<div class='no-slots'>Geen beschikbare tijden op deze dag. Kies een andere datum.</div>" : `
+          ${lunch.length ? `<div class="period-title">🍽 Lunch</div><div class="slot-grid">${lunch.map(s=>`<button class="slot-btn ${state.time===s.time?"selected":""}" onclick="setTime('${s.time}')">${s.time}</button>`).join("")}</div>` : ""}
+          ${dinner.length ? `<div class="period-title">🍷 Diner</div><div class="slot-grid">${dinner.map(s=>`<button class="slot-btn ${state.time===s.time?"selected":""}" onclick="setTime('${s.time}')">${s.time}</button>`).join("")}</div>` : ""}
+        `}
+      </div>` : ""}
+      <button class="btn-primary" onclick="goTo(1)" ${!canProceed?"disabled":""}>Volgende →</button>`;
+
+    document.getElementById("date-input")?.addEventListener("change", e => {
+      state.date = e.target.value;
+      loadSlots(state.date);
+    });
+  }
+
+  if (state.step === 1) {
+    app.innerHTML = `
+      <div class="field"><label>Naam *</label><input type="text" id="f-name" value="${state.name}" placeholder="Uw naam" /></div>
+      <div class="field"><label>E-mailadres</label><input type="email" id="f-email" value="${state.email}" placeholder="Voor de bevestiging" /></div>
+      <div class="field"><label>Telefoonnummer</label><input type="tel" id="f-phone" value="${state.phone}" placeholder="Optioneel" /></div>
+      <div class="field"><label>Opmerkingen</label><textarea id="f-notes" placeholder="Allergieën, speciale wensen...">${state.notes}</textarea></div>
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="goTo(0)">← Terug</button>
+        <button class="btn-primary" onclick="saveAndNext()" style="flex:1" ${!state.name?"disabled":""}>Volgende →</button>
+      </div>`;
+    document.getElementById("f-name")?.addEventListener("input", e => { state.name = e.target.value; document.querySelector(".btn-row .btn-primary").disabled = !state.name; });
+    document.getElementById("f-email")?.addEventListener("input", e => state.email = e.target.value);
+    document.getElementById("f-phone")?.addEventListener("input", e => state.phone = e.target.value);
+    document.getElementById("f-notes")?.addEventListener("input", e => state.notes = e.target.value);
+  }
+
+  if (state.step === 2) {
+    app.innerHTML = `
+      <div class="summary">
+        <h3>Uw reservering</h3>
+        <div class="summary-row"><span class="summary-label">Datum</span><span class="summary-val">${fmtDate(state.date)}</span></div>
+        <div class="summary-row"><span class="summary-label">Tijd</span><span class="summary-val">${state.time}</span></div>
+        <div class="summary-row"><span class="summary-label">Personen</span><span class="summary-val">${state.guests}</span></div>
+        <div class="summary-row"><span class="summary-label">Naam</span><span class="summary-val">${state.name}</span></div>
+        ${state.email?`<div class="summary-row"><span class="summary-label">E-mail</span><span class="summary-val">${state.email}</span></div>`:""}
+        ${state.phone?`<div class="summary-row"><span class="summary-label">Telefoon</span><span class="summary-val">${state.phone}</span></div>`:""}
+        ${state.notes?`<div class="summary-row"><span class="summary-label">Opmerking</span><span class="summary-val">${state.notes}</span></div>`:""}
+      </div>
+      ${state.error?`<div class="error-msg">${state.error}</div>`:""}
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="goTo(1)">← Terug</button>
+        <button class="btn-primary" onclick="submit()" style="flex:1" ${state.submitting?"disabled":""}>
+          ${state.submitting?"Versturen...":"Reservering plaatsen"}
+        </button>
+      </div>
+      <p style="font-size:11px;color:#aeaeb2;text-align:center;margin-top:12px">U ontvangt een bevestiging per e-mail zodra uw reservering is geplaatst.</p>`;
+  }
+}
+
+function goTo(step) { state.step = step; render(); }
+function setGuests(n) { state.guests = n; render(); }
+function setTime(t) { state.time = t; render(); }
+function saveAndNext() {
+  state.name = document.getElementById("f-name")?.value || state.name;
+  state.email = document.getElementById("f-email")?.value || state.email;
+  state.phone = document.getElementById("f-phone")?.value || state.phone;
+  state.notes = document.getElementById("f-notes")?.value || state.notes;
+  if (!state.name) return;
+  goTo(2);
+}
+function resetForm() {
+  state = { step:0, date:"", time:"", guests:2, name:"", email:"", phone:"", notes:"", slots:[], loadingSlots:false, submitting:false, done:false, error:"", settings:state.settings, dayStatus:null };
+  render();
+}
+
+// Settings publiek beschikbaar maken - tijdelijk via auth bypass of public endpoint
+// Voor nu laden we settings zonder auth (voeg public endpoint toe)
+loadSettings().then(() => render());
+</script>
+</body>
+</html>

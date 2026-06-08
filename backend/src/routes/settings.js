@@ -5,12 +5,18 @@ import { requireAuth } from "../middleware/auth.js";
 const router = Router();
 
 // GET /api/settings
-router.get("/", requireAuth, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT setting_key, setting_val FROM settings");
     const settings = Object.fromEntries(rows.map(r => [r.setting_key, r.setting_val]));
     const [closed] = await pool.query("SELECT * FROM closed_dates ORDER BY date ASC");
-    settings.closed_dates = closed;
+    const fmtD = v => {
+      if (!v) return null;
+      if (typeof v === 'string') return v.slice(0,10);
+      const d = new Date(v);
+      return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    };
+    settings.closed_dates = closed.map(d => ({ ...d, date: fmtD(d.date) }));
     res.json(settings);
   } catch (err) {
     console.error(err);

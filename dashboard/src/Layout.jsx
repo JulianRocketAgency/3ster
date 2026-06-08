@@ -15,6 +15,25 @@ export default function Layout({ nav, children }) {
       }).catch(() => {});
   }, []);
 
+  const menuItems = [
+    {
+      page: "dashboard", label: "Reserveringen",
+      icon: <><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></>
+    },
+    {
+      page: "incoming", label: "Nieuwe reserveringen", badge: pendingCount,
+      icon: <><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.44 2 2 0 0 1 3.92 1.25h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></>
+    },
+    {
+      page: "guests", label: "Gasten",
+      icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>
+    },
+    {
+      page: "settings", label: "Instellingen",
+      icon: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>
+    },
+  ];
+
   return (
     <>
       <style>{`
@@ -28,14 +47,14 @@ export default function Layout({ nav, children }) {
         .topbar-brand:hover h1 { color:#0071e3; }
         .topbar-right { display:flex; align-items:center; gap:8px; }
         .greeting { font-size:13px; color:#86868b; }
-        .menu-btn { width:34px; height:34px; border-radius:8px; border:1px solid #e5e5ea; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.15s; position:relative; }
+        .menu-btn { width:34px; height:34px; border-radius:8px; border:1px solid #e5e5ea; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.15s; -webkit-tap-highlight-color:transparent; position:relative; }
         .menu-btn:hover { background:#f5f5f7; }
         .menu-badge { position:absolute; top:-5px; right:-5px; background:#ff9f0a; color:#fff; font-size:10px; font-weight:700; min-width:16px; height:16px; border-radius:8px; display:flex; align-items:center; justify-content:center; padding:0 4px; border:2px solid #fff; }
-        .dropdown { position:absolute; top:calc(100% + 8px); right:0; background:#fff; border-radius:14px; border:1px solid #e5e5ea; box-shadow:0 8px 32px rgba(0,0,0,0.12); min-width:240px; overflow:hidden; z-index:200; }
+        .dropdown { position:absolute; top:calc(100% + 8px); right:0; background:#fff; border-radius:14px; border:1px solid #e5e5ea; box-shadow:0 8px 32px rgba(0,0,0,0.12); min-width:230px; overflow:hidden; z-index:200; }
         .dropdown-header { padding:14px 16px 10px; border-bottom:1px solid #f2f2f7; }
         .dropdown-header span { font-size:12px; color:#86868b; }
         .dropdown-header strong { display:block; font-size:14px; font-weight:600; color:#1d1d1f; margin-top:1px; }
-        .dropdown-item { width:100%; background:none; border:none; cursor:pointer; padding:13px 16px; display:flex; align-items:center; gap:12px; font-family:inherit; font-size:14px; color:#1d1d1f; text-align:left; transition:background 0.1s; }
+        .dropdown-item { width:100%; background:none; border:none; cursor:pointer; padding:13px 16px; display:flex; align-items:center; gap:12px; font-family:inherit; font-size:14px; color:#1d1d1f; text-align:left; transition:background 0.1s; -webkit-tap-highlight-color:transparent; position:relative; }
         .dropdown-item:hover { background:#f5f5f7; }
         .dropdown-item svg { color:#86868b; flex-shrink:0; }
         .item-badge { background:#ff9f0a; color:#fff; font-size:10px; font-weight:700; min-width:18px; height:18px; border-radius:9px; display:flex; align-items:center; justify-content:center; padding:0 5px; margin-left:auto; }
@@ -69,26 +88,18 @@ export default function Layout({ nav, children }) {
                       <span>Ingelogd als</span>
                       <strong>{name}</strong>
                     </div>
-                    <button className="dropdown-item" onClick={() => { navigate("dashboard"); setMenuOpen(false); }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                      Reserveringen
-                    </button>
-                    <button className="dropdown-item" onClick={() => { navigate("incoming"); setMenuOpen(false); }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.44 2 2 0 0 1 3.92 1.25h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                      Nieuwe reserveringen
-                      {pendingCount > 0 && <span className="item-badge">{pendingCount}</span>}
-                    </button>
-                    <button className="dropdown-item" onClick={() => { navigate("guests"); setMenuOpen(false); }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                      Gasten
-                    </button>
-                    <button className="dropdown-item" onClick={() => { navigate("settings"); setMenuOpen(false); }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                      Instellingen
-                    </button>
+                    {menuItems.map(({ page, label, icon, badge }) => (
+                      <button key={page} className="dropdown-item" onClick={() => { navigate(page); setMenuOpen(false); }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">{icon}</svg>
+                        {label}
+                        {badge > 0 && <span className="item-badge">{badge}</span>}
+                      </button>
+                    ))}
                     <div className="dropdown-divider"/>
                     <button className="dropdown-item danger" onClick={logout}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                      </svg>
                       Uitloggen
                     </button>
                   </div>

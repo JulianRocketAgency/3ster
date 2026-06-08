@@ -1,6 +1,7 @@
 import { Router } from "express";
 import pool from "../config/db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { sendReservationConfirmation } from "../services/email.js";
 
 const router = Router();
 
@@ -53,6 +54,14 @@ router.post("/", async (req, res) => {
       [name, email || null, phone || null, date, time, guests, notes || null, guestId]
     );
     await conn.commit();
+
+    // Stuur bevestigingsmail
+    if (email) {
+      sendReservationConfirmation({ name, email, date, time, guests, notes }).catch(err =>
+        console.error("Mail fout:", err)
+      );
+    }
+
     res.status(201).json({ id: result.insertId, message: "Reservering ontvangen" });
   } catch (err) {
     await conn.rollback();

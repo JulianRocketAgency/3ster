@@ -21,29 +21,20 @@ export default function DayView({ date, nav }) {
   const [reservations, setReservations] = useState([]);
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("reservations");
+  const [view, setView] = useState("reservations"); // reservations | slots
+  const [blockingAll, setBlockingAll] = useState(false);
 
-  const [isClosed, setIsClosed] = useState(false);
   const d = new Date(date + "T12:00:00");
   const dateLabel = d.toLocaleDateString("nl-NL",{ weekday:"long", day:"numeric", month:"long", year:"numeric" });
+
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
     Promise.all([
       fetch("/api/reservations", { headers }).then(r => r.json()),
       fetch(`/api/slots/${date}`, { headers }).then(r => r.json()),
-      fetch("/api/settings", { headers }).then(r => r.json()),
-    ]).then(([res, sl, settings]) => {
-      const openDays = (settings.open_days||"").split(",").filter(Boolean).map(Number);
-      const closedDates = Array.isArray(settings.closed_dates) ? settings.closed_dates : [];
-      const jsDay = new Date(date+"T12:00:00").getDay();
-      const isRegularClosed = !openDays.includes(jsDay);
-      const isExtraClosed = closedDates.some(c => c.date && c.date.slice(0,10) === date);
-      setIsClosed(isRegularClosed || isExtraClosed);
-      const dayRes = (Array.isArray(res) ? res : [])
-        .filter(r => r.date && r.date.slice(0,10) === date)
-        .sort((a,b) => a.time.localeCompare(b.time));
-      setReservations(dayRes);
+    ]).then(([res, sl]) => {
+      setReservations((Array.isArray(res)?res:[]).filter(r => r.date===date).sort((a,b) => a.time.localeCompare(b.time)));
       setSlots(Array.isArray(sl) ? sl : []);
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -58,32 +49,43 @@ export default function DayView({ date, nav }) {
   };
 
   const toggleSlot = async (slot) => {
-    await fetch(`/api/slots/${date}/block`, {
-      method: slot.blocked ? "DELETE" : "POST",
-      headers:{"Content-Type":"application/json", ...headers},
-      body: JSON.stringify({ time_slot: slot.time }),
-    });
-    setSlots(prev => prev.map(s => s.time===slot.time ? {...s, blocked:!s.blocked} : s));
+    const isBlocked = slot.blocked;
+    if (isBlocked) {
+      await fetch(`/api/slots/${date}/block`, {
+        method:"DELETE", headers:{"Content-Type":"application/json", ...headers},
+        body: JSON.stringify({ time_slot: slot.time }),
+      });
+    } else {
+      await fetch(`/api/slots/${date}/block`, {
+        method:"POST", headers:{"Content-Type":"application/json", ...headers},
+        body: JSON.stringify({ time_slot: slot.time }),
+      });
+    }
+    setSlots(prev => prev.map(s => s.time===slot.time ? {...s, blocked:!isBlocked, available:isBlocked && !s.guests_booked>=s.capacity} : s));
   };
 
   const toggleAllSlots = async () => {
     const allBlocked = slots.every(s => s.blocked);
-    await fetch(`/api/slots/${date}/block-all`, {
-      method: allBlocked ? "DELETE" : "POST",
-      headers:{"Content-Type":"application/json", ...headers},
-      body: JSON.stringify({ reason:"Gesloten" }),
-    });
-    setSlots(prev => prev.map(s => ({...s, blocked:!allBlocked})));
+    setBlockingAll(true);
+    if (allBlocked) {
+      await fetch(`/api/slots/${date}/block-all`, { method:"DELETE", headers });
+      setSlots(prev => prev.map(s => ({...s, blocked:false})));
+    } else {
+      await fetch(`/api/slots/${date}/block-all`, {
+        method:"POST", headers:{"Content-Type":"application/json", ...headers},
+        body: JSON.stringify({ reason: "Gesloten" }),
+      });
+      setSlots(prev => prev.map(s => ({...s, blocked:true})));
+    }
+    setBlockingAll(false);
   };
 
   const total = reservations.length;
-  const totalGuests = reservations.reduce((s,r) => s+(r.guests||0), 0);
+  const guests = reservations.reduce((s,r) => s+(r.guests||0), 0);
   const pending = reservations.filter(r => r.status==="pending").length;
-  const blockedCount = slots.filter(s => s.blocked).length;
-  const allBlocked = slots.length > 0 && slots.every(s => s.blocked);
   const lunchSlots = slots.filter(s => s.period==="lunch");
   const dinnerSlots = slots.filter(s => s.period==="dinner");
-  const hasSlots = slots.length > 0 && !isClosed;
+  const allBlocked = slots.length > 0 && slots.every(s => s.blocked);
 
   return (
     <Layout nav={nav}>
@@ -93,11 +95,11 @@ export default function DayView({ date, nav }) {
         .back-btn:hover { text-decoration:underline; }
         .day-title { font-size:22px; font-weight:600; color:#1d1d1f; letter-spacing:-0.3px; text-transform:capitalize; margin-bottom:16px; }
         .day-stats { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
-        .day-stat { background:#fff; border:1px solid #e5e5ea; border-radius:12px; padding:12px 18px; min-width:80px; }
+        .day-stat { background:#fff; border:1px solid #e5e5ea; border-radius:12px; padding:12px 18px; }
         .day-stat-val { font-size:20px; font-weight:600; color:#1d1d1f; }
         .day-stat-lbl { font-size:11px; color:#86868b; margin-top:1px; }
-        .tab-bar { display:flex; background:#f5f5f7; border-radius:10px; padding:3px; margin-bottom:24px; }
-        .tab { flex:1; padding:9px; border:none; background:none; border-radius:8px; font-family:inherit; font-size:13px; font-weight:500; color:#86868b; cursor:pointer; transition:all 0.15s; }
+        .tab-bar { display:flex; background:#f5f5f7; border-radius:10px; padding:3px; margin-bottom:20px; }
+        .tab { flex:1; padding:8px; border:none; background:none; border-radius:8px; font-family:inherit; font-size:13px; font-weight:500; color:#86868b; cursor:pointer; transition:all 0.15s; }
         .tab.active { background:#fff; color:#1d1d1f; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
         .res-card { background:#fff; border:1px solid #e5e5ea; border-radius:16px; overflow:hidden; margin-bottom:10px; }
         .res-card-header { padding:16px 20px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
@@ -110,23 +112,23 @@ export default function DayView({ date, nav }) {
         .btn-confirm { flex:1; padding:10px; border-radius:8px; border:none; cursor:pointer; background:#30d158; color:#fff; font-size:13px; font-weight:500; font-family:inherit; }
         .btn-cancel { flex:1; padding:10px; border-radius:8px; border:1px solid #e5e5ea; cursor:pointer; background:#fff; color:#ff3b30; font-size:13px; font-weight:500; font-family:inherit; }
         .btn-restore { flex:1; padding:10px; border-radius:8px; border:1px solid #e5e5ea; cursor:pointer; background:#fff; color:#86868b; font-size:13px; font-weight:500; font-family:inherit; }
-        .block-all-btn { width:100%; padding:13px; border-radius:10px; border:2px solid #e5e5ea; background:#fff; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; margin-bottom:16px; transition:all 0.2s; color:#1d1d1f; display:flex; align-items:center; justify-content:center; gap:8px; }
+        .slot-section-title { font-size:12px; font-weight:600; color:#86868b; text-transform:uppercase; letter-spacing:1px; margin:16px 0 10px; }
+        .slot-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:8px; margin-bottom:8px; }
+        .slot-btn { padding:10px 6px; border-radius:10px; border:1.5px solid; cursor:pointer; font-family:inherit; font-size:13px; font-weight:500; text-align:center; transition:all 0.15s; position:relative; -webkit-tap-highlight-color:transparent; }
+        .slot-btn.available { background:#f0faf4; border-color:#30d158; color:#1d7a3a; }
+        .slot-btn.blocked { background:#fff2f2; border-color:#ff3b30; color:#cc0000; }
+        .slot-btn.full { background:#fff8ee; border-color:#ff9f0a; color:#b36000; }
+        .slot-sub { font-size:10px; font-weight:400; margin-top:2px; opacity:0.8; }
+        .block-all-btn { width:100%; padding:12px; border-radius:10px; border:1px solid #e5e5ea; background:#fff; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; margin-bottom:16px; transition:all 0.15s; color:#1d1d1f; }
         .block-all-btn.all-blocked { background:#fff2f2; border-color:#ff3b30; color:#cc0000; }
+        .block-all-btn:hover { background:#f5f5f7; }
         .legend { display:flex; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
         .legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:#86868b; }
         .legend-dot { width:10px; height:10px; border-radius:3px; }
-        .period-title { font-size:12px; font-weight:600; color:#86868b; text-transform:uppercase; letter-spacing:1px; margin:0 0 10px; }
-        .slot-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:8px; margin-bottom:20px; }
-        .slot-btn { padding:12px 8px; border-radius:12px; border:2px solid; cursor:pointer; font-family:inherit; font-size:14px; font-weight:600; text-align:center; transition:all 0.15s; user-select:none; }
-        .slot-btn.available { background:#f0faf4; border-color:#30d158; color:#1a7a3c; }
-        .slot-btn.available:hover { background:#d6f5e3; }
-        .slot-btn.blocked { background:#ff3b30; border-color:#cc0000; color:#fff; box-shadow:0 2px 8px rgba(255,59,48,0.3); }
-        .slot-btn.full { background:#fff8ee; border-color:#ff9f0a; color:#b36000; }
-        .slot-sub { font-size:11px; font-weight:400; margin-top:3px; opacity:0.85; }
         .empty { text-align:center; padding:60px 20px; color:#aeaeb2; font-size:14px; }
         .spinner-wrap { display:flex; justify-content:center; padding:60px; }
         .spinner { width:24px; height:24px; border:2px solid #e5e5ea; border-top-color:#0071e3; border-radius:50%; animation:spin 0.65s linear infinite; }
-        @media(max-width:600px) { .slot-grid { grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); } }
+        @media(max-width:600px) { .slot-grid { grid-template-columns:repeat(auto-fill,minmax(80px,1fr)); } }
       `}</style>
 
       <button className="back-btn" onClick={() => nav.navigate("dashboard")}>
@@ -138,26 +140,20 @@ export default function DayView({ date, nav }) {
 
       <div className="day-stats">
         <div className="day-stat"><div className="day-stat-val">{total}</div><div className="day-stat-lbl">Reserveringen</div></div>
-        <div className="day-stat"><div className="day-stat-val">{totalGuests}</div><div className="day-stat-lbl">Gasten</div></div>
-        <div className="day-stat"><div className="day-stat-val" style={{ color:pending>0?"#ff9f0a":"#1d1d1f" }}>{pending}</div><div className="day-stat-lbl">Te bevestigen</div></div>
-        {hasSlots && <div className="day-stat"><div className="day-stat-val" style={{ color:blockedCount>0?"#ff3b30":"#1d1d1f" }}>{blockedCount}/{slots.length}</div><div className="day-stat-lbl">Slots gesloten</div></div>}
+        <div className="day-stat"><div className="day-stat-val">{guests}</div><div className="day-stat-lbl">Gasten</div></div>
+        <div className="day-stat"><div className="day-stat-val" style={{ color:pending>0?"#ff9f0a":"#1d1d1f" }}>{pending}</div><div className="day-stat-lbl">Nog te bevestigen</div></div>
+        <div className="day-stat"><div className="day-stat-val">{slots.filter(s=>s.blocked).length}/{slots.length}</div><div className="day-stat-lbl">Slots gesloten</div></div>
       </div>
 
-      {hasSlots && (
-        <div className="tab-bar">
-          <button className={`tab ${activeTab==="reservations"?"active":""}`} onClick={() => setActiveTab("reservations")}>
-            Reserveringen {total>0?`(${total})`:""}
-          </button>
-          <button className={`tab ${activeTab==="slots"?"active":""}`} onClick={() => setActiveTab("slots")}>
-            Tijdslots {blockedCount>0?`(${blockedCount} gesloten)`:""}
-          </button>
-        </div>
-      )}
+      <div className="tab-bar">
+        <button className={`tab ${view==="reservations"?"active":""}`} onClick={() => setView("reservations")}>Reserveringen</button>
+        <button className={`tab ${view==="slots"?"active":""}`} onClick={() => setView("slots")}>Tijdslots beheren</button>
+      </div>
 
       {loading ? (
         <div className="spinner-wrap"><div className="spinner"/></div>
-      ) : activeTab==="reservations" || !hasSlots ? (
-        total===0
+      ) : view === "reservations" ? (
+        total === 0
           ? <div className="empty">Geen reserveringen op deze dag</div>
           : reservations.map(r => (
             <div key={r.id} className="res-card">
@@ -175,7 +171,8 @@ export default function DayView({ date, nav }) {
                 {r.email && <div><div className="res-field-label">E-mail</div>
                   <div className="res-field-val">
                     {r.guest_id
-                      ? <span style={{ color:"#0071e3", cursor:"pointer", textDecoration:"underline" }} onClick={() => nav.navigate("guest", r.guest_id)}>{r.email}</span>
+                      ? <span style={{ color:"#0071e3", cursor:"pointer", textDecoration:"underline" }}
+                          onClick={() => nav.navigate("guest", r.guest_id)}>{r.email}</span>
                       : r.email}
                   </div>
                 </div>}
@@ -183,7 +180,7 @@ export default function DayView({ date, nav }) {
                 {r.notes && <div style={{ gridColumn:"1/-1" }}><div className="res-field-label">Opmerking</div><div className="res-field-val">{r.notes}</div></div>}
               </div>
               <div className="res-actions">
-                {r.status!=="confirmed" && r.status!=="cancelled" && <button className="btn-confirm" onClick={() => changeStatus(r.id,"confirmed")}>Bevestigen</button>}
+                {r.status!=="confirmed" && <button className="btn-confirm" onClick={() => changeStatus(r.id,"confirmed")}>Bevestigen</button>}
                 {r.status!=="cancelled" && <button className="btn-cancel" onClick={() => changeStatus(r.id,"cancelled")}>Annuleren</button>}
                 {r.status==="cancelled" && <button className="btn-restore" onClick={() => changeStatus(r.id,"pending")}>Herstellen</button>}
               </div>
@@ -191,36 +188,53 @@ export default function DayView({ date, nav }) {
           ))
       ) : (
         <>
-          <button className={`block-all-btn ${allBlocked?"all-blocked":""}`} onClick={toggleAllSlots}>
-            {allBlocked ? <>🔓 Hele dag vrijgeven</> : <>🔒 Hele dag blokkeren</>}
+          <button className={`block-all-btn ${allBlocked?"all-blocked":""}`} onClick={toggleAllSlots} disabled={blockingAll}>
+            {allBlocked ? "🔓 Hele dag vrijgeven" : "🔒 Hele dag blokkeren"}
           </button>
+
           <div className="legend">
             <div className="legend-item"><div className="legend-dot" style={{ background:"#30d158" }}/> Beschikbaar</div>
             <div className="legend-item"><div className="legend-dot" style={{ background:"#ff9f0a" }}/> Vol</div>
             <div className="legend-item"><div className="legend-dot" style={{ background:"#ff3b30" }}/> Geblokkeerd</div>
           </div>
-          {lunchSlots.length>0 && <>
-            <p className="period-title">🍽 Lunch</p>
-            <div className="slot-grid">
-              {lunchSlots.map(slot => (
-                <button key={slot.time} className={`slot-btn ${slot.blocked?"blocked":slot.guests_booked>=slot.capacity?"full":"available"}`} onClick={() => toggleSlot(slot)}>
-                  {slot.time}
-                  <div className="slot-sub">{slot.blocked?"Gesloten":slot.guests_booked>=slot.capacity?`Vol · ${slot.guests_booked}`:`${slot.spots_left} vrij`}</div>
-                </button>
-              ))}
-            </div>
-          </>}
-          {dinnerSlots.length>0 && <>
-            <p className="period-title">🍷 Diner</p>
-            <div className="slot-grid">
-              {dinnerSlots.map(slot => (
-                <button key={slot.time} className={`slot-btn ${slot.blocked?"blocked":slot.guests_booked>=slot.capacity?"full":"available"}`} onClick={() => toggleSlot(slot)}>
-                  {slot.time}
-                  <div className="slot-sub">{slot.blocked?"Gesloten":slot.guests_booked>=slot.capacity?`Vol · ${slot.guests_booked}`:`${slot.spots_left} vrij`}</div>
-                </button>
-              ))}
-            </div>
-          </>}
+
+          {lunchSlots.length > 0 && (
+            <>
+              <div className="slot-section-title">Lunch</div>
+              <div className="slot-grid">
+                {lunchSlots.map(slot => (
+                  <button key={slot.time}
+                    className={`slot-btn ${slot.blocked ? "blocked" : slot.guests_booked >= slot.capacity ? "full" : "available"}`}
+                    onClick={() => toggleSlot(slot)}
+                    title={slot.blocked ? "Klik om te openen" : "Klik om te blokkeren"}>
+                    {slot.time}
+                    <div className="slot-sub">
+                      {slot.blocked ? "Gesloten" : slot.guests_booked >= slot.capacity ? `Vol (${slot.guests_booked})` : `${slot.spots_left} vrij`}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {dinnerSlots.length > 0 && (
+            <>
+              <div className="slot-section-title">Diner</div>
+              <div className="slot-grid">
+                {dinnerSlots.map(slot => (
+                  <button key={slot.time}
+                    className={`slot-btn ${slot.blocked ? "blocked" : slot.guests_booked >= slot.capacity ? "full" : "available"}`}
+                    onClick={() => toggleSlot(slot)}
+                    title={slot.blocked ? "Klik om te openen" : "Klik om te blokkeren"}>
+                    {slot.time}
+                    <div className="slot-sub">
+                      {slot.blocked ? "Gesloten" : slot.guests_booked >= slot.capacity ? `Vol (${slot.guests_booked})` : `${slot.spots_left} vrij`}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
     </Layout>

@@ -5,6 +5,7 @@ import Guests from "./pages/Guests.jsx";
 import GuestProfile from "./pages/GuestProfile.jsx";
 import Settings from "./pages/Settings.jsx";
 import DayView from "./pages/DayView.jsx";
+import Incoming from "./pages/Incoming.jsx";
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
@@ -18,9 +19,10 @@ export default function App() {
 
   const nav = { navigate, logout, token };
 
-  if (page === "guest") return <GuestProfile id={pageParam} nav={nav} />;
-  if (page === "guests") return <Guests nav={nav} />;
-  if (page === "settings") return <Settings nav={nav} />;
-  if (page === "day") return <DayView date={pageParam} nav={nav} />;
+  if (page === "guest")     return <GuestProfile id={pageParam} nav={nav} />;
+  if (page === "guests")    return <Guests nav={nav} />;
+  if (page === "settings")  return <Settings nav={nav} />;
+  if (page === "day")       return <DayView date={pageParam} nav={nav} />;
+  if (page === "incoming")  return <Incoming nav={nav} />;
   return <Dashboard nav={nav} />;
 }
