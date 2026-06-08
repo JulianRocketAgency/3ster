@@ -88,7 +88,7 @@ function ReservationRow({ res, onStatusChange, nav }) {
   const changeStatus = async (status) => {
     setLoading(true);
     const token = localStorage.getItem("token");
-    await fetch(`/api/reservations/${res.id}/status`, {
+    await fetch((import.meta.env.VITE_API_URL || "") + `/api/reservations/${res.id}/status`, {
       method:"PATCH", headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
       body: JSON.stringify({ status }),
     });
@@ -236,8 +236,8 @@ export default function Dashboard({ nav }) {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      fetch("/api/reservations", { headers:{ Authorization:`Bearer ${token}` } }).then(r => r.json()),
-      fetch("/api/settings", { headers:{ Authorization:`Bearer ${token}` } }).then(r => r.json()),
+      fetch((import.meta.env.VITE_API_URL || "") + "/api/reservations", { headers:{ Authorization:`Bearer ${token}` } }).then(r => r.json()),
+      fetch((import.meta.env.VITE_API_URL || "") + "/api/settings", { headers:{ Authorization:`Bearer ${token}` } }).then(r => r.json()),
     ]).then(([res, set]) => {
       setReservations(Array.isArray(res)?res:[]);
       setSettings(set);
@@ -247,7 +247,7 @@ export default function Dashboard({ nav }) {
 
   const handleStatusChange = async (id, status) => {
     const token = localStorage.getItem("token");
-    await fetch(`/api/reservations/${id}/status`, {
+    await fetch((import.meta.env.VITE_API_URL || "") + `/api/reservations/${id}/status`, {
       method:"PATCH", headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
       body: JSON.stringify({ status }),
     });

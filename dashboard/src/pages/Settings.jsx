@@ -15,7 +15,7 @@ export default function Settings({ nav }) {
   const [newReason, setNewReason] = useState("");
 
   useEffect(() => {
-    fetch("/api/settings", { headers:{ Authorization:`Bearer ${token}` } })
+    fetch((import.meta.env.VITE_API_URL || "") + "/api/settings", { headers:{ Authorization:`Bearer ${token}` } })
       .then(r => r.json()).then(data => {
         setSettings(data);
         setClosedDates(Array.isArray(data.closed_dates) ? data.closed_dates : []);
@@ -34,7 +34,7 @@ export default function Settings({ nav }) {
   const saveAll = async (overrideClosedDates) => {
     setSaving(true);
     const dates = overrideClosedDates !== undefined ? overrideClosedDates : closedDates;
-    await fetch("/api/settings", {
+    await fetch((import.meta.env.VITE_API_URL || "") + "/api/settings", {
       method:"PUT", headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
       body: JSON.stringify({ ...settings, closed_dates: dates }),
     });

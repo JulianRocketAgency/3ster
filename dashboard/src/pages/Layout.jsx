@@ -7,7 +7,7 @@ export default function Layout({ nav, children }) {
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
-    fetch("/api/reservations", { headers:{ Authorization:`Bearer ${token}` } })
+    fetch((import.meta.env.VITE_API_URL || "") + "/api/reservations", { headers:{ Authorization:`Bearer ${token}` } })
       .then(r => r.json())
       .then(data => {
         const count = (Array.isArray(data)?data:[]).filter(r => r.status==="pending").length;

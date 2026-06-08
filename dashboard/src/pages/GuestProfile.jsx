@@ -13,14 +13,14 @@ export default function GuestProfile({ id, nav }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/guests/${id}`, { headers:{ Authorization:`Bearer ${token}` } })
+    fetch((import.meta.env.VITE_API_URL || "") + `/api/guests/${id}`, { headers:{ Authorization:`Bearer ${token}` } })
       .then(r => r.json()).then(data => { setGuest(data); setForm({ name:data.name, phone:data.phone||"", notes:data.notes||"" }); setLoading(false); })
       .catch(() => setLoading(false));
   }, [id]);
 
   const save = async () => {
     setSaving(true);
-    await fetch(`/api/guests/${id}`, {
+    await fetch((import.meta.env.VITE_API_URL || "") + `/api/guests/${id}`, {
       method:"PATCH", headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
       body: JSON.stringify(form),
     });

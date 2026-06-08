@@ -8,7 +8,7 @@ export default function Guests({ nav }) {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetch("/api/guests", { headers:{ Authorization:`Bearer ${token}` } })
+    fetch((import.meta.env.VITE_API_URL || "") + "/api/guests", { headers:{ Authorization:`Bearer ${token}` } })
       .then(r => r.json()).then(data => { setGuests(Array.isArray(data)?data:[]); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);

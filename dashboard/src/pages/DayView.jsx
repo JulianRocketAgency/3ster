@@ -30,9 +30,9 @@ export default function DayView({ date, nav }) {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/reservations", { headers }).then(r => r.json()),
-      fetch(`/api/slots/${date}`, { headers }).then(r => r.json()),
-      fetch("/api/settings", { headers }).then(r => r.json()),
+      fetch((import.meta.env.VITE_API_URL || "") + "/api/reservations", { headers }).then(r => r.json()),
+      fetch((import.meta.env.VITE_API_URL || "") + `/api/slots/${date}`, { headers }).then(r => r.json()),
+      fetch((import.meta.env.VITE_API_URL || "") + "/api/settings", { headers }).then(r => r.json()),
     ]).then(([res, sl, settings]) => {
       const openDays = (settings.open_days||"").split(",").filter(Boolean).map(Number);
       const closedDates = Array.isArray(settings.closed_dates) ? settings.closed_dates : [];
@@ -50,7 +50,7 @@ export default function DayView({ date, nav }) {
   }, [date]);
 
   const changeStatus = async (id, status) => {
-    await fetch(`/api/reservations/${id}/status`, {
+    await fetch((import.meta.env.VITE_API_URL || "") + `/api/reservations/${id}/status`, {
       method:"PATCH", headers:{"Content-Type":"application/json", ...headers},
       body: JSON.stringify({ status }),
     });
@@ -58,7 +58,7 @@ export default function DayView({ date, nav }) {
   };
 
   const toggleSlot = async (slot) => {
-    await fetch(`/api/slots/${date}/block`, {
+    await fetch((import.meta.env.VITE_API_URL || "") + `/api/slots/${date}/block`, {
       method: slot.blocked ? "DELETE" : "POST",
       headers:{"Content-Type":"application/json", ...headers},
       body: JSON.stringify({ time_slot: slot.time }),
@@ -68,7 +68,7 @@ export default function DayView({ date, nav }) {
 
   const toggleAllSlots = async () => {
     const allBlocked = slots.every(s => s.blocked);
-    await fetch(`/api/slots/${date}/block-all`, {
+    await fetch((import.meta.env.VITE_API_URL || "") + `/api/slots/${date}/block-all`, {
       method: allBlocked ? "DELETE" : "POST",
       headers:{"Content-Type":"application/json", ...headers},
       body: JSON.stringify({ reason:"Gesloten" }),

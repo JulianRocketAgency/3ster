@@ -11,7 +11,7 @@ export default function Incoming({ nav }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/reservations", { headers:{ Authorization:`Bearer ${token}` } })
+    fetch((import.meta.env.VITE_API_URL || "") + "/api/reservations", { headers:{ Authorization:`Bearer ${token}` } })
       .then(r => r.json())
       .then(data => {
         const pending = (Array.isArray(data)?data:[])
@@ -23,7 +23,7 @@ export default function Incoming({ nav }) {
   }, []);
 
   const changeStatus = async (id, status) => {
-    await fetch(`/api/reservations/${id}/status`, {
+    await fetch((import.meta.env.VITE_API_URL || "") + `/api/reservations/${id}/status`, {
       method:"PATCH",
       headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
       body: JSON.stringify({ status }),
