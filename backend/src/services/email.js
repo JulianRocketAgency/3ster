@@ -4,8 +4,9 @@ dotenv.config();
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "3ster.nl",
-  port: parseInt(process.env.SMTP_PORT) || 465,
-  secure: parseInt(process.env.SMTP_PORT) === 465,
+  port: parseInt(process.env.SMTP_PORT) || 587,
+  secure: false,
+  tls: { rejectUnauthorized: false },
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
