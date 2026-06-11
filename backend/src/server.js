@@ -12,10 +12,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
@@ -27,9 +24,4 @@ app.get("/api/health", (_, res) => res.json({ status: "ok" }));
 
 app.listen(PORT, () => {
   console.log(`✅ Backend draait op http://localhost:${PORT}`);
-});
-    res.json({ ok: true });
-  } catch(e) {
-    res.json({ ok: false, error: e.message });
-  }
 });
