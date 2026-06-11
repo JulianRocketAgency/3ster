@@ -1,7 +1,7 @@
 import { Router } from "express";
 import pool from "../config/db.js";
 import { requireAuth } from "../middleware/auth.js";
-import { sendReservationConfirmation } from "../services/email.js";
+import { sendReservationConfirmation, sendReservationConfirmed } from "../services/email.js";
 
 const router = Router();
 
@@ -79,6 +79,17 @@ router.patch("/:id/status", requireAuth, async (req, res) => {
   if (!allowed.includes(status)) return res.status(400).json({ message: "Ongeldige status" });
   try {
     await pool.query("UPDATE reservations SET status = ? WHERE id = ?", [status, req.params.id]);
+
+    // Stuur bevestigingsmail als status confirmed wordt
+    if (status === "confirmed") {
+      const [rows] = await pool.query("SELECT * FROM reservations WHERE id = ?", [req.params.id]);
+      const r = rows[0];
+      if (r && r.email) {
+        sendReservationConfirmed({ name: r.name, email: r.email, date: r.date, time: r.time, guests: r.guests })
+          .catch(err => console.error("Mail fout:", err));
+      }
+    }
+
     res.json({ message: "Status bijgewerkt" });
   } catch (err) {
     console.error(err);
