@@ -28,3 +28,21 @@ app.get("/api/health", (_, res) => res.json({ status: "ok" }));
 app.listen(PORT, () => {
   console.log(`✅ Backend draait op http://localhost:${PORT}`);
 });
+
+// Tijdelijke mail test
+app.get("/api/test-mail", async (req, res) => {
+  try {
+    const { sendReservationConfirmation } = await import("./services/email.js");
+    await sendReservationConfirmation({
+      name: "Test",
+      email: req.query.email || "julian@rocket-agency.nl",
+      date: "2026-06-12",
+      time: "18:00",
+      guests: 2,
+      notes: "Test mail"
+    });
+    res.json({ ok: true });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
