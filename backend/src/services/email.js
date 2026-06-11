@@ -10,8 +10,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.mijndomein.nl",
-  port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: false,
+  port: parseInt(process.env.SMTP_PORT) || 465,
+  secure: parseInt(process.env.SMTP_PORT) === 465,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
