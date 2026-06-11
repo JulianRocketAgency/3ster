@@ -90,8 +90,8 @@ router.get("/:date", async (req, res) => {
 
     res.json(slots);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Serverfout" });
+    console.error("SLOTS ERROR:", err.message, err.stack);
+    res.status(500).json({ message: err.message });
   }
 });
 
@@ -107,8 +107,8 @@ router.post("/:date/block", requireAuth, async (req, res) => {
     );
     res.json({ message: "Slot geblokkeerd" });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Serverfout" });
+    console.error("SLOTS ERROR:", err.message, err.stack);
+    res.status(500).json({ message: err.message });
   }
 });
 
@@ -120,8 +120,8 @@ router.delete("/:date/block", requireAuth, async (req, res) => {
     await pool.query("DELETE FROM blocked_slots WHERE date = ? AND time_slot = ?", [date, time_slot]);
     res.json({ message: "Slot vrijgegeven" });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Serverfout" });
+    console.error("SLOTS ERROR:", err.message, err.stack);
+    res.status(500).json({ message: err.message });
   }
 });
 
@@ -145,8 +145,8 @@ router.post("/:date/block-all", requireAuth, async (req, res) => {
     }
     res.json({ message: "Hele dag geblokkeerd" });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Serverfout" });
+    console.error("SLOTS ERROR:", err.message, err.stack);
+    res.status(500).json({ message: err.message });
   }
 });
 
@@ -157,8 +157,8 @@ router.delete("/:date/block-all", requireAuth, async (req, res) => {
     await pool.query("DELETE FROM blocked_slots WHERE date = ?", [date]);
     res.json({ message: "Dag vrijgegeven" });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Serverfout" });
+    console.error("SLOTS ERROR:", err.message, err.stack);
+    res.status(500).json({ message: err.message });
   }
 });
 
