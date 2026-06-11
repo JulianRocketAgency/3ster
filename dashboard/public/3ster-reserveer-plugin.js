@@ -385,14 +385,14 @@
 
     if (state.step === 1) {
       return `<div class="ds-body">
-        <div class="ds-field"><label class="ds-label">Naam *</label><input class="ds-input" type="text" value="${state.name}" placeholder="Uw naam" oninput="DrieStarReserveer._field('name',this.value)" /></div>
-        <div class="ds-field"><label class="ds-label">E-mailadres</label><input class="ds-input" type="email" value="${state.email}" placeholder="Voor de bevestiging" oninput="DrieStarReserveer._field('email',this.value)" /></div>
-        <div class="ds-field"><label class="ds-label">Telefoon</label><input class="ds-input" type="tel" value="${state.phone}" placeholder="Optioneel" oninput="DrieStarReserveer._field('phone',this.value)" /></div>
-        <div class="ds-field"><label class="ds-label">Opmerkingen</label><textarea class="ds-input" placeholder="Allergieën, speciale wensen…" oninput="DrieStarReserveer._field('notes',this.value)">${state.notes}</textarea></div>
+        <div class="ds-field"><label class="ds-label">Naam *</label><input class="ds-input" id="ds-f-name" type="text" value="${state.name}" placeholder="Uw naam" /></div>
+        <div class="ds-field"><label class="ds-label">E-mailadres</label><input class="ds-input" id="ds-f-email" type="email" value="${state.email}" placeholder="Voor de bevestiging" /></div>
+        <div class="ds-field"><label class="ds-label">Telefoon</label><input class="ds-input" id="ds-f-phone" type="tel" value="${state.phone}" placeholder="Optioneel" /></div>
+        <div class="ds-field"><label class="ds-label">Opmerkingen</label><textarea class="ds-input" id="ds-f-notes" placeholder="Allergieën, speciale wensen…">${state.notes}</textarea></div>
         <div class="ds-divider"></div>
         <div class="ds-btn-row">
           <button class="ds-btn ds-btn-sec" onclick="DrieStarReserveer._go(0)">← Terug</button>
-          <button class="ds-btn ds-btn-primary" onclick="DrieStarReserveer._go(2)" style="flex:1" ${!state.name?'disabled':''}>Controleer →</button>
+          <button class="ds-btn ds-btn-primary" onclick="DrieStarReserveer._saveAndNext()" style="flex:1">Controleer →</button>
         </div>
         <div class="ds-footer"><a href="https://www.rocket-agency.nl" target="_blank">Reserveringssysteem door Rocket Agency</a></div>
       </div>`;
@@ -468,6 +468,21 @@
     _time(t) { state.time = t; render(); },
     _field(k, v) { state[k] = v; },
     _submit() { submitReservation(); },
+    _saveAndNext() {
+      const n = document.getElementById('ds-f-name');
+      const e = document.getElementById('ds-f-email');
+      const p = document.getElementById('ds-f-phone');
+      const nt = document.getElementById('ds-f-notes');
+      if (n) state.name = n.value.trim();
+      if (e) state.email = e.value.trim();
+      if (p) state.phone = p.value.trim();
+      if (nt) state.notes = nt.value.trim();
+      if (!state.name) {
+        if (n) { n.style.borderColor = '#c0392b'; n.focus(); }
+        return;
+      }
+      state.step = 2; render();
+    },
     _reset() {
       state = { ...state, step:0, date:'', time:'', guests:2, name:'', email:'', phone:'', notes:'', slots:[], loadingSlots:false, submitting:false, done:false, error:'', dayStatus:null };
       render();
