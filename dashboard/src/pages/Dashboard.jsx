@@ -288,7 +288,7 @@ export default function Dashboard({ nav }) {
           reservation={cancelTarget}
           onConfirm={async (id, status, reason) => {
             const token = localStorage.getItem("token");
-            await fetch(`/api/reservations/${id}/status`, {
+            await fetch((import.meta.env.VITE_API_URL || "") + `/api/reservations/${id}/status`, {
               method:"PATCH", headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
               body: JSON.stringify({ status, cancel_reason: reason }),
             });
