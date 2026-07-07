@@ -9,7 +9,7 @@ router.get("/", requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT g.*,
-        COUNT(r.id) as visit_count,
+        (COALESCE(g.visits_count, 0) + COUNT(r.id)) as visit_count,
         MAX(r.date) as last_visit,
         SUM(r.guests) as total_guests
        FROM guests g
@@ -29,7 +29,7 @@ router.get("/:id", requireAuth, async (req, res) => {
   try {
     const [[guest]] = await pool.query(
       `SELECT g.*,
-        COUNT(r.id) as visit_count,
+        (COALESCE(g.visits_count, 0) + COUNT(r.id)) as visit_count,
         MAX(r.date) as last_visit,
         SUM(r.guests) as total_guests_hosted
        FROM guests g
