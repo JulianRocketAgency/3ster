@@ -7,6 +7,20 @@ import Settings from "./pages/Settings.jsx";
 import DayView from "./pages/DayView.jsx";
 import Incoming from "./pages/Incoming.jsx";
 
+// Automatisch uitloggen bij 401
+const originalFetch = window.fetch;
+window.fetch = async (...args) => {
+  const res = await originalFetch(...args);
+  if (res.status === 401) {
+    const url = typeof args[0] === 'string' ? args[0] : args[0].url;
+    if (url && url.includes('/api/') && !url.includes('/api/auth/')) {
+      localStorage.removeItem('token');
+      window.location.reload();
+    }
+  }
+  return res;
+};
+
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [page, setPage] = useState("dashboard");
