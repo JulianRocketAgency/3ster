@@ -288,8 +288,8 @@ export default function Dashboard({ nav }) {
           reservation={cancelTarget}
           onConfirm={async (id, status, reason) => {
             const token = localStorage.getItem("token");
-            await fetch(\`/api/reservations/\${id}/status\`, {
-              method:"PATCH", headers:{"Content-Type":"application/json", Authorization:\`Bearer \${token}\`},
+            await fetch(`/api/reservations/${id}/status`, {
+              method:"PATCH", headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
               body: JSON.stringify({ status, cancel_reason: reason }),
             });
             setReservations(prev => prev.map(r => r.id===id ? {...r,status} : r));
