@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Layout from "./Layout.jsx";
+import CancelModal from "./CancelModal.jsx";
 
 const DAYS = ["Maandag","Dinsdag","Woensdag","Donderdag","Vrijdag","Zaterdag","Zondag"];
 
@@ -228,6 +229,7 @@ export default function Dashboard({ nav }) {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPending, setShowPending] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
 
   const weekDates = Array.from({length:7}, (_,i) => addDays(weekStart,i));
   const weekNumber = getWeekNumber(weekStart);
@@ -281,6 +283,20 @@ export default function Dashboard({ nav }) {
 
   return (
     <Layout nav={nav}>
+      {cancelTarget && (
+        <CancelModal
+          reservation={cancelTarget}
+          onConfirm={async (id, status, reason) => {
+            const token = localStorage.getItem("token");
+            await fetch(\`/api/reservations/\${id}/status\`, {
+              method:"PATCH", headers:{"Content-Type":"application/json", Authorization:\`Bearer \${token}\`},
+              body: JSON.stringify({ status, cancel_reason: reason }),
+            });
+            setReservations(prev => prev.map(r => r.id===id ? {...r,status} : r));
+          }}
+          onClose={() => setCancelTarget(null)}
+        />
+      )}
       {showPending && (
         <PendingModal reservations={weekRes} onStatusChange={handleStatusChange} onClose={() => setShowPending(false)}/>
       )}

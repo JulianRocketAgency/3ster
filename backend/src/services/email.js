@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "3ster.nl",
+  host: process.env.SMTP_HOST || "smtp-relay.brevo.com",
   port: parseInt(process.env.SMTP_PORT) || 587,
   secure: false,
   tls: { rejectUnauthorized: false },
@@ -22,7 +22,7 @@ function formatDate(dateStr) {
 
 function formatTime(t) { return t ? t.slice(0, 5) : ""; }
 
-function buildHTML({ title, intro, date, time, guests, notes }) {
+function buildHTML({ title, intro, date, time, guests, notes, extra }) {
   return `<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;padding:40px 0;">
@@ -35,7 +35,7 @@ function buildHTML({ title, intro, date, time, guests, notes }) {
   <tr><td style="padding:40px 40px 32px;">
     <p style="margin:0 0 8px;font-size:22px;font-weight:600;color:#1d1d1f;">${title}</p>
     <p style="margin:0 0 32px;font-size:15px;color:#86868b;line-height:1.6;">${intro}</p>
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;border-radius:12px;margin-bottom:32px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;border-radius:12px;margin-bottom:24px;">
       <tr><td style="padding:24px 28px;">
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr><td style="padding:8px 0;border-bottom:1px solid #e5e5ea;">
@@ -57,6 +57,7 @@ function buildHTML({ title, intro, date, time, guests, notes }) {
         </table>
       </td></tr>
     </table>
+    ${extra || ""}
     <p style="margin:0;font-size:14px;color:#86868b;line-height:1.8;">
       <strong style="color:#1d1d1f;">De 3 Ster</strong><br>
       Kerklaan 13-15<br>6731 BA Otterlo<br>
@@ -79,6 +80,13 @@ export async function sendReservationConfirmation({ name, email, date, time, gue
     title: "Bedankt voor uw reservering!",
     intro: `Beste ${name}, uw reservering bij De 3 Ster is in goede orde ontvangen.`,
     date, time, guests, notes,
+    extra: `<table width="100%" cellpadding="0" cellspacing="0" style="background:#e8f4fd;border-radius:10px;margin-bottom:24px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0;font-size:13px;color:#1d6fa8;line-height:1.6;">
+          📧 <strong>Let op:</strong> zodra wij uw reservering hebben bevestigd, ontvangt u een tweede e-mail ter bevestiging.
+        </p>
+      </td></tr>
+    </table>`,
   });
 
   await transporter.sendMail({
@@ -92,16 +100,38 @@ export async function sendReservationConfirmation({ name, email, date, time, gue
 
 export async function sendReservationConfirmed({ name, email, date, time, guests }) {
   const html = buildHTML({
-    title: "Uw reservering is bevestigd!",
-    intro: `Beste ${name}, wij kijken ernaar uit u te verwelkomen bij De 3 Ster.`,
+    title: "Uw reservering is bevestigd! ✓",
+    intro: `Beste ${name}, geweldig nieuws! Wij hebben uw reservering bevestigd en kijken ernaar uit u te verwelkomen bij De 3 Ster.`,
     date, time, guests,
   });
 
   await transporter.sendMail({
     from: `"De 3 Ster" <${process.env.SMTP_FROM}>`,
     to: email,
-    subject: `Reservering bevestigd — De 3 Ster`,
+    subject: `Reservering bevestigd ✓ — De 3 Ster`,
     html,
   });
   console.log(`✅ Bevestigingsmail verstuurd naar ${email}`);
+}
+
+export async function sendReservationCancelled({ name, email, date, time, guests, reason }) {
+  const html = buildHTML({
+    title: "Uw reservering is geannuleerd",
+    intro: `Beste ${name}, helaas moeten wij uw reservering bij De 3 Ster annuleren.`,
+    date, time, guests,
+    extra: reason ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#fff2f2;border-radius:10px;margin-bottom:24px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 4px;font-size:12px;color:#cc0000;text-transform:uppercase;letter-spacing:0.5px;">Reden van annulering</p>
+        <p style="margin:0;font-size:14px;color:#1d1d1f;">${reason}</p>
+      </td></tr>
+    </table>` : "",
+  });
+
+  await transporter.sendMail({
+    from: `"De 3 Ster" <${process.env.SMTP_FROM}>`,
+    to: email,
+    subject: `Reservering geannuleerd — De 3 Ster`,
+    html,
+  });
+  console.log(`✅ Annuleringsmail verstuurd naar ${email}`);
 }
