@@ -18,47 +18,94 @@ function StatusBadge({ status }) {
 
 export default function DayView({ date, nav }) {
   const token = localStorage.getItem("token");
+  const API = import.meta.env.VITE_API_URL || "";
   const [reservations, setReservations] = useState([]);
   const [slots, setSlots] = useState([]);
+  const [override, setOverride] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("reservations");
-
+  const [blockingAll, setBlockingAll] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
+
+  // Override form state
+  const [overrideForm, setOverrideForm] = useState({
+    no_lunch: false, lunch_open: "12:00", lunch_close: "14:30",
+    no_dinner: false, dinner_open: "17:00", dinner_close: "21:30",
+  });
+  const [savingOverride, setSavingOverride] = useState(false);
+  const [overrideSaved, setOverrideSaved] = useState(false);
+
   const d = new Date(date + "T12:00:00");
   const dateLabel = d.toLocaleDateString("nl-NL",{ weekday:"long", day:"numeric", month:"long", year:"numeric" });
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
     Promise.all([
-      fetch((import.meta.env.VITE_API_URL || "") + "/api/reservations", { headers }).then(r => r.json()),
-      fetch((import.meta.env.VITE_API_URL || "") + `/api/slots/${date}`, { headers }).then(r => r.json()),
-      fetch((import.meta.env.VITE_API_URL || "") + "/api/settings", { headers }).then(r => r.json()),
-    ]).then(([res, sl, settings]) => {
+      fetch(`${API}/api/reservations`, { headers }).then(r => r.json()),
+      fetch(`${API}/api/slots/${date}`, { headers }).then(r => r.json()),
+      fetch(`${API}/api/settings`, { headers }).then(r => r.json()),
+    ]).then(([res, slotData, settings]) => {
+      setReservations((Array.isArray(res)?res:[]).filter(r => r.date && r.date.slice(0,10)===date).sort((a,b) => a.time.localeCompare(b.time)));
+
+      // Slots kunnen nu { slots, override } zijn
+      if (slotData && Array.isArray(slotData.slots)) {
+        setSlots(slotData.slots);
+        const ov = slotData.override;
+        setOverride(ov);
+        if (ov) {
+          setOverrideForm({
+            no_lunch: ov.no_lunch || false,
+            lunch_open: ov.lunch_open || settings.kitchen_open_lunch || "12:00",
+            lunch_close: ov.lunch_close || settings.kitchen_close_lunch || "14:30",
+            no_dinner: ov.no_dinner || false,
+            dinner_open: ov.dinner_open || settings.kitchen_open_dinner || "17:00",
+            dinner_close: ov.dinner_close || settings.kitchen_close_dinner || "21:30",
+          });
+        } else {
+          setOverrideForm({
+            no_lunch: false,
+            lunch_open: settings.kitchen_open_lunch || "12:00",
+            lunch_close: settings.kitchen_close_lunch || "14:30",
+            no_dinner: false,
+            dinner_open: settings.kitchen_open_dinner || "17:00",
+            dinner_close: settings.kitchen_close_dinner || "21:30",
+          });
+        }
+      } else if (Array.isArray(slotData)) {
+        setSlots(slotData);
+      }
+
+      // Check gesloten
       const openDays = (settings.open_days||"").split(",").filter(Boolean).map(Number);
       const closedDates = Array.isArray(settings.closed_dates) ? settings.closed_dates : [];
       const jsDay = new Date(date+"T12:00:00").getDay();
-      const isRegularClosed = !openDays.includes(jsDay);
-      const isExtraClosed = closedDates.some(c => c.date && c.date.slice(0,10) === date);
-      setIsClosed(isRegularClosed || isExtraClosed);
-      const dayRes = (Array.isArray(res) ? res : [])
-        .filter(r => r.date && r.date.slice(0,10) === date)
-        .sort((a,b) => a.time.localeCompare(b.time));
-      setReservations(dayRes);
-      setSlots(Array.isArray(sl) ? sl : []);
+      setIsClosed(!openDays.includes(jsDay) || closedDates.some(c => c.date && c.date.slice(0,10)===date));
+
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [date]);
 
-  const changeStatus = async (id, status) => {
-    await fetch((import.meta.env.VITE_API_URL || "") + `/api/reservations/${id}/status`, {
+  const reloadSlots = () => {
+    fetch(`${API}/api/slots/${date}`, { headers }).then(r => r.json()).then(slotData => {
+      if (slotData && Array.isArray(slotData.slots)) {
+        setSlots(slotData.slots);
+        setOverride(slotData.override);
+      } else if (Array.isArray(slotData)) {
+        setSlots(slotData);
+      }
+    });
+  };
+
+  const changeStatus = async (id, status, cancelReason) => {
+    await fetch(`${API}/api/reservations/${id}/status`, {
       method:"PATCH", headers:{"Content-Type":"application/json", ...headers},
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, cancel_reason: cancelReason }),
     });
     setReservations(prev => prev.map(r => r.id===id ? {...r,status} : r));
   };
 
   const toggleSlot = async (slot) => {
-    await fetch((import.meta.env.VITE_API_URL || "") + `/api/slots/${date}/block`, {
+    await fetch(`${API}/api/slots/${date}/block`, {
       method: slot.blocked ? "DELETE" : "POST",
       headers:{"Content-Type":"application/json", ...headers},
       body: JSON.stringify({ time_slot: slot.time }),
@@ -68,12 +115,33 @@ export default function DayView({ date, nav }) {
 
   const toggleAllSlots = async () => {
     const allBlocked = slots.every(s => s.blocked);
-    await fetch((import.meta.env.VITE_API_URL || "") + `/api/slots/${date}/block-all`, {
+    setBlockingAll(true);
+    await fetch(`${API}/api/slots/${date}/block-all`, {
       method: allBlocked ? "DELETE" : "POST",
       headers:{"Content-Type":"application/json", ...headers},
       body: JSON.stringify({ reason:"Gesloten" }),
     });
     setSlots(prev => prev.map(s => ({...s, blocked:!allBlocked})));
+    setBlockingAll(false);
+  };
+
+  const saveOverride = async () => {
+    setSavingOverride(true);
+    await fetch(`${API}/api/slots/${date}/override`, {
+      method: "PUT",
+      headers:{"Content-Type":"application/json", ...headers},
+      body: JSON.stringify(overrideForm),
+    });
+    setSavingOverride(false);
+    setOverrideSaved(true);
+    setTimeout(() => setOverrideSaved(false), 2500);
+    reloadSlots();
+  };
+
+  const resetOverride = async () => {
+    await fetch(`${API}/api/slots/${date}/override`, { method:"DELETE", headers });
+    setOverride(null);
+    reloadSlots();
   };
 
   const total = reservations.length;
@@ -81,9 +149,9 @@ export default function DayView({ date, nav }) {
   const pending = reservations.filter(r => r.status==="pending").length;
   const blockedCount = slots.filter(s => s.blocked).length;
   const allBlocked = slots.length > 0 && slots.every(s => s.blocked);
+  const hasSlots = slots.length > 0 && !isClosed;
   const lunchSlots = slots.filter(s => s.period==="lunch");
   const dinnerSlots = slots.filter(s => s.period==="dinner");
-  const hasSlots = slots.length > 0 && !isClosed;
 
   return (
     <Layout nav={nav}>
@@ -123,10 +191,30 @@ export default function DayView({ date, nav }) {
         .slot-btn.blocked { background:#ff3b30; border-color:#cc0000; color:#fff; box-shadow:0 2px 8px rgba(255,59,48,0.3); }
         .slot-btn.full { background:#fff8ee; border-color:#ff9f0a; color:#b36000; }
         .slot-sub { font-size:11px; font-weight:400; margin-top:3px; opacity:0.85; }
+
+        /* Override sectie */
+        .override-section { background:#fff; border:1px solid #e5e5ea; border-radius:14px; padding:20px; margin-bottom:20px; }
+        .override-title { font-size:14px; font-weight:600; color:#1d1d1f; margin-bottom:4px; }
+        .override-sub { font-size:12px; color:#86868b; margin-bottom:16px; }
+        .override-badge { display:inline-flex; align-items:center; gap:4px; background:#fff8ee; border:1px solid #ff9f0a; color:#b36000; font-size:11px; font-weight:500; padding:2px 8px; border-radius:20px; margin-left:8px; }
+        .override-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+        .override-field { display:flex; flex-direction:column; gap:4px; }
+        .override-label { font-size:11px; color:#86868b; text-transform:uppercase; letter-spacing:0.5px; }
+        .override-input { background:#f5f5f7; border:1.5px solid transparent; border-radius:8px; padding:9px 12px; font-family:inherit; font-size:14px; color:#1d1d1f; outline:none; transition:border-color 0.15s; width:100%; }
+        .override-input:focus { background:#fff; border-color:#0071e3; }
+        .override-input:disabled { opacity:0.4; cursor:not-allowed; }
+        .override-check { display:flex; align-items:center; gap:8px; font-size:13px; color:#1d1d1f; cursor:pointer; margin-bottom:10px; }
+        .override-check input { width:16px; height:16px; cursor:pointer; accent-color:#0071e3; }
+        .override-btns { display:flex; gap:8px; margin-top:4px; }
+        .btn-save-override { flex:1; padding:10px; background:#0071e3; color:#fff; border:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:500; transition:background 0.15s; }
+        .btn-save-override:hover { background:#0077ed; }
+        .btn-reset-override { padding:10px 16px; background:#fff; color:#ff3b30; border:1px solid #e5e5ea; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px; }
+        .saved-badge { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:#30d158; font-weight:500; }
+
         .empty { text-align:center; padding:60px 20px; color:#aeaeb2; font-size:14px; }
         .spinner-wrap { display:flex; justify-content:center; padding:60px; }
         .spinner { width:24px; height:24px; border:2px solid #e5e5ea; border-top-color:#0071e3; border-radius:50%; animation:spin 0.65s linear infinite; }
-        @media(max-width:600px) { .slot-grid { grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); } }
+        @media(max-width:600px) { .slot-grid { grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); } .override-row { grid-template-columns:1fr; } }
       `}</style>
 
       <button className="back-btn" onClick={() => nav.navigate("dashboard")}>
@@ -150,6 +238,9 @@ export default function DayView({ date, nav }) {
           </button>
           <button className={`tab ${activeTab==="slots"?"active":""}`} onClick={() => setActiveTab("slots")}>
             Tijdslots {blockedCount>0?`(${blockedCount} gesloten)`:""}
+          </button>
+          <button className={`tab ${activeTab==="tijden"?"active":""}`} onClick={() => setActiveTab("tijden")}>
+            Tijden {override?"⚙️":""}
           </button>
         </div>
       )}
@@ -189,9 +280,9 @@ export default function DayView({ date, nav }) {
               </div>
             </div>
           ))
-      ) : (
+      ) : activeTab==="slots" ? (
         <>
-          <button className={`block-all-btn ${allBlocked?"all-blocked":""}`} onClick={toggleAllSlots}>
+          <button className={`block-all-btn ${allBlocked?"all-blocked":""}`} onClick={toggleAllSlots} disabled={blockingAll}>
             {allBlocked ? <>🔓 Hele dag vrijgeven</> : <>🔒 Hele dag blokkeren</>}
           </button>
           <div className="legend">
@@ -222,6 +313,72 @@ export default function DayView({ date, nav }) {
             </div>
           </>}
         </>
+      ) : (
+        // TAB: Tijden
+        <div className="override-section">
+          <div className="override-title">
+            Tijden voor deze dag
+            {override && <span className="override-badge">⚙️ Aangepast</span>}
+          </div>
+          <div className="override-sub">
+            Stel afwijkende openingstijden in voor {dateLabel}. Laat leeg om de standaard tijden te gebruiken.
+          </div>
+
+          {/* LUNCH */}
+          <label className="override-check">
+            <input type="checkbox" checked={overrideForm.no_lunch} onChange={e => setOverrideForm(f => ({...f, no_lunch:e.target.checked}))}/>
+            Geen lunch op deze dag
+          </label>
+          <div className="override-row">
+            <div className="override-field">
+              <label className="override-label">Lunch open</label>
+              <input className="override-input" type="time" value={overrideForm.lunch_open} disabled={overrideForm.no_lunch}
+                onChange={e => setOverrideForm(f => ({...f, lunch_open:e.target.value}))}/>
+            </div>
+            <div className="override-field">
+              <label className="override-label">Lunch gesloten</label>
+              <input className="override-input" type="time" value={overrideForm.lunch_close} disabled={overrideForm.no_lunch}
+                onChange={e => setOverrideForm(f => ({...f, lunch_close:e.target.value}))}/>
+            </div>
+          </div>
+
+          <div style={{ borderTop:"1px solid #f2f2f7", margin:"12px 0" }}/>
+
+          {/* DINER */}
+          <label className="override-check">
+            <input type="checkbox" checked={overrideForm.no_dinner} onChange={e => setOverrideForm(f => ({...f, no_dinner:e.target.checked}))}/>
+            Geen diner op deze dag
+          </label>
+          <div className="override-row">
+            <div className="override-field">
+              <label className="override-label">Diner open</label>
+              <input className="override-input" type="time" value={overrideForm.dinner_open} disabled={overrideForm.no_dinner}
+                onChange={e => setOverrideForm(f => ({...f, dinner_open:e.target.value}))}/>
+            </div>
+            <div className="override-field">
+              <label className="override-label">Diner gesloten</label>
+              <input className="override-input" type="time" value={overrideForm.dinner_close} disabled={overrideForm.no_dinner}
+                onChange={e => setOverrideForm(f => ({...f, dinner_close:e.target.value}))}/>
+            </div>
+          </div>
+
+          <div className="override-btns">
+            {override && (
+              <button className="btn-reset-override" onClick={resetOverride}>
+                Terug naar standaard
+              </button>
+            )}
+            <button className="btn-save-override" onClick={saveOverride} disabled={savingOverride}>
+              {savingOverride ? "Opslaan…" : "Tijden opslaan"}
+            </button>
+            {overrideSaved && (
+              <div className="saved-badge">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Opgeslagen
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </Layout>
   );
