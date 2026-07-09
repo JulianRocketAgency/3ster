@@ -21,6 +21,10 @@ export default function Settings({ nav }) {
   const [weeklyOverrides, setWeeklyOverrides] = useState({});
   const [savingWeekly, setSavingWeekly] = useState(null);
   const [savedWeekly, setSavedWeekly] = useState(null);
+  const [extraOpenDates, setExtraOpenDates] = useState([]);
+  const [closedPeriods, setClosedPeriods] = useState([]);
+  const [newExtraOpen, setNewExtraOpen] = useState({ date:"", reason:"", lunch_open:"12:00", lunch_close:"14:30", dinner_open:"17:00", dinner_close:"21:30", no_lunch:false, no_dinner:false });
+  const [newPeriod, setNewPeriod] = useState({ date_from:"", date_to:"", reason:"" });
 
   useEffect(() => {
     Promise.all([
@@ -30,8 +34,11 @@ export default function Settings({ nav }) {
       setSettings(s);
       setClosedDates(Array.isArray(s.closed_dates) ? s.closed_dates : []);
       const wMap = {};
-      if (Array.isArray(w)) w.forEach(row => { wMap[row.day_of_week] = row; });
+      if (Array.isArray(w?.weekly)) w.weekly.forEach(row => { wMap[row.day_of_week] = row; });
+      else if (Array.isArray(w)) w.forEach(row => { wMap[row.day_of_week] = row; });
       setWeeklyOverrides(wMap);
+      setExtraOpenDates(Array.isArray(w?.extraOpen) ? w.extraOpen : []);
+      setClosedPeriods(Array.isArray(w?.closedPeriods) ? w.closedPeriods : []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -89,6 +96,37 @@ export default function Settings({ nav }) {
       });
     }
     setSavingWeekly(null); setSavedWeekly(dayVal); setTimeout(() => setSavedWeekly(null), 2000);
+  };
+
+  const addExtraOpen = async () => {
+    if (!newExtraOpen.date) return;
+    await fetch(`${API}/api/weekly/extra-open`, {
+      method:"POST", headers:{"Content-Type":"application/json", ...headers},
+      body: JSON.stringify(newExtraOpen),
+    });
+    setExtraOpenDates(prev => [...prev.filter(d => d.date !== newExtraOpen.date), { ...newExtraOpen }]);
+    setNewExtraOpen({ date:"", reason:"", lunch_open:"12:00", lunch_close:"14:30", dinner_open:"17:00", dinner_close:"21:30", no_lunch:false, no_dinner:false });
+  };
+
+  const removeExtraOpen = async (date) => {
+    await fetch(`${API}/api/weekly/extra-open/${date}`, { method:"DELETE", headers });
+    setExtraOpenDates(prev => prev.filter(d => d.date !== date));
+  };
+
+  const addClosedPeriod = async () => {
+    if (!newPeriod.date_from || !newPeriod.date_to) return;
+    const res = await fetch(`${API}/api/weekly/closed-period`, {
+      method:"POST", headers:{"Content-Type":"application/json", ...headers},
+      body: JSON.stringify(newPeriod),
+    });
+    const data = await res.json();
+    setClosedPeriods(prev => [...prev, { ...newPeriod, id: data.id || Date.now() }]);
+    setNewPeriod({ date_from:"", date_to:"", reason:"" });
+  };
+
+  const removeClosedPeriod = async (id) => {
+    await fetch(`${API}/api/weekly/closed-period/${id}`, { method:"DELETE", headers });
+    setClosedPeriods(prev => prev.filter(p => p.id !== id));
   };
 
   const resetWeekly = async (dayVal) => {
