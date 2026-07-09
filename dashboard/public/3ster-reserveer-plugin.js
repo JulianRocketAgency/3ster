@@ -8,7 +8,7 @@
  *  ─────────────────────────────────────────
  *  Plak onderaan elke pagina, vóór </body>:
  *
- *  <script src="https://3ster.vercel.app/3ster-reserveer-plugin.js"></script>
+ *  <script src="https://3ster.nl/3ster-reserveer-plugin.js"></script>
  *
  *  De zweefknop rechtsonder verschijnt automatisch.
  *
@@ -107,8 +107,12 @@
     try {
       const r = await fetch(`${API}/api/slots/${date}`);
       const d = await r.json();
-      state.slots = Array.isArray(d) ? d : [];
-      state.dayStatus = state.slots.filter(s => s.available).length > 0 ? 'open' : 'no_slots';
+      if (d && d.isClosed) {
+        state.slots = []; state.dayStatus = 'closed';
+      } else {
+        state.slots = Array.isArray(d) ? d : (d && Array.isArray(d.slots)) ? d.slots : [];
+        state.dayStatus = state.slots.filter(s => s.available).length > 0 ? 'open' : 'no_slots';
+      }
     } catch(e) { state.slots = []; state.dayStatus = 'no_slots'; }
     state.loadingSlots = false;
     render();
