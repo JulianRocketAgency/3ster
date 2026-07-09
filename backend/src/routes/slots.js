@@ -12,17 +12,52 @@ function generateSlots(openTime, closeTime) {
   let minutes = oh * 60 + om;
   const end = ch * 60 + cm;
   while (minutes < end) {
-    const h = String(Math.floor(minutes / 60)).padStart(2, "0");
-    const m = String(minutes % 60).padStart(2, "0");
-    slots.push(`${h}:${m}`);
+    slots.push(`${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`);
     minutes += 30;
   }
   return slots;
 }
 
 function timeToMinutes(t) {
-  const [h, m] = t.slice(0, 5).split(":").map(Number);
+  const [h, m] = t.slice(0,5).split(":").map(Number);
   return h * 60 + m;
+}
+
+// Bepaal effectieve tijden voor een dag (prioriteit: dag > week > standaard)
+async function getEffectiveTimes(date, settings) {
+  const jsDay = new Date(date + "T12:00:00").getDay();
+
+  // 1. Dag-specifieke override
+  const [dayRows] = await pool.query("SELECT * FROM day_overrides WHERE date = ?", [date]);
+  if (dayRows[0]) {
+    const d = dayRows[0];
+    return {
+      source: "day",
+      override: d,
+      lunchSlots: d.no_lunch ? [] : generateSlots(d.lunch_open || settings.kitchen_open_lunch, d.lunch_close || settings.kitchen_close_lunch),
+      dinnerSlots: d.no_dinner ? [] : generateSlots(d.dinner_open || settings.kitchen_open_dinner, d.dinner_close || settings.kitchen_close_dinner),
+    };
+  }
+
+  // 2. Weekdag override
+  const [weekRows] = await pool.query("SELECT * FROM weekly_overrides WHERE day_of_week = ?", [jsDay]);
+  if (weekRows[0]) {
+    const w = weekRows[0];
+    return {
+      source: "week",
+      override: w,
+      lunchSlots: w.no_lunch ? [] : generateSlots(w.lunch_open || settings.kitchen_open_lunch, w.lunch_close || settings.kitchen_close_lunch),
+      dinnerSlots: w.no_dinner ? [] : generateSlots(w.dinner_open || settings.kitchen_open_dinner, w.dinner_close || settings.kitchen_close_dinner),
+    };
+  }
+
+  // 3. Standaard instellingen
+  return {
+    source: "default",
+    override: null,
+    lunchSlots: generateSlots(settings.kitchen_open_lunch || "12:00", settings.kitchen_close_lunch || "14:30"),
+    dinnerSlots: generateSlots(settings.kitchen_open_dinner || "17:00", settings.kitchen_close_dinner || "21:30"),
+  };
 }
 
 // GET /api/slots/:date
@@ -35,46 +70,23 @@ router.get("/:date", async (req, res) => {
     const settings = Object.fromEntries(settingsRows.map(r => [r.setting_key, r.setting_val]));
     const maxGuests = parseInt(settings.max_guests) || 50;
 
-    // Check dag override
-    const [overrideRows] = await pool.query("SELECT * FROM day_overrides WHERE date = ?", [date]);
-    const override = overrideRows[0] || null;
-
-    // Bepaal lunch slots
-    let lunchSlots = [];
-    if (!override?.no_lunch) {
-      const lunchOpen = override?.lunch_open || settings.kitchen_open_lunch || "12:00";
-      const lunchClose = override?.lunch_close || settings.kitchen_close_lunch || "14:30";
-      lunchSlots = generateSlots(lunchOpen, lunchClose);
-    }
-
-    // Bepaal diner slots
-    let dinnerSlots = [];
-    if (!override?.no_dinner) {
-      const dinnerOpen = override?.dinner_open || settings.kitchen_open_dinner || "17:00";
-      const dinnerClose = override?.dinner_close || settings.kitchen_close_dinner || "21:30";
-      dinnerSlots = generateSlots(dinnerOpen, dinnerClose);
-    }
-
+    const { lunchSlots, dinnerSlots, override, source } = await getEffectiveTimes(date, settings);
     const allSlots = [...lunchSlots, ...dinnerSlots];
 
-    // Geblokkeerde slots
     const [blocked] = await pool.query("SELECT time_slot, reason FROM blocked_slots WHERE date = ?", [date]);
-    const blockedMap = Object.fromEntries(blocked.map(b => [b.time_slot.slice(0, 5), b.reason]));
+    const blockedMap = Object.fromEntries(blocked.map(b => [b.time_slot.slice(0,5), b.reason]));
 
-    // Reserveringen
     const [reservations] = await pool.query(
       `SELECT TIME_FORMAT(time, '%H:%i') as time, guests FROM reservations WHERE date = ? AND status != 'cancelled'`,
       [date]
     );
 
-    // Capaciteit overrides
     const [capacities] = await pool.query(
       "SELECT TIME_FORMAT(time_slot, '%H:%i') as time_slot, max_guests FROM slot_capacity WHERE date = ?",
       [date]
     );
     const capacityMap = Object.fromEntries(capacities.map(c => [c.time_slot, c.max_guests]));
 
-    // Bezetting per slot (2 uur verblijf)
     const occupancyMap = {};
     for (const slot of allSlots) occupancyMap[slot] = 0;
     for (const res of reservations) {
@@ -104,15 +116,7 @@ router.get("/:date", async (req, res) => {
       };
     });
 
-    // Stuur ook override mee zodat frontend hem kan tonen
-    res.json({ slots, override: override ? {
-      lunch_open: override.lunch_open,
-      lunch_close: override.lunch_close,
-      dinner_open: override.dinner_open,
-      dinner_close: override.dinner_close,
-      no_lunch: !!override.no_lunch,
-      no_dinner: !!override.no_dinner,
-    } : null });
+    res.json({ slots, override, source });
   } catch (err) {
     console.error("SLOTS ERROR:", err.message);
     res.status(500).json({ message: err.message });
@@ -125,14 +129,11 @@ router.post("/:date/block", requireAuth, async (req, res) => {
   const { time_slot, reason } = req.body;
   try {
     await pool.query(
-      `INSERT INTO blocked_slots (date, time_slot, reason) VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE reason = VALUES(reason)`,
+      `INSERT INTO blocked_slots (date, time_slot, reason) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE reason = VALUES(reason)`,
       [date, time_slot, reason || null]
     );
     res.json({ message: "Slot geblokkeerd" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // DELETE /api/slots/:date/block
@@ -142,9 +143,7 @@ router.delete("/:date/block", requireAuth, async (req, res) => {
   try {
     await pool.query("DELETE FROM blocked_slots WHERE date = ? AND time_slot = ?", [date, time_slot]);
     res.json({ message: "Slot vrijgegeven" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // POST /api/slots/:date/block-all
@@ -154,10 +153,7 @@ router.post("/:date/block-all", requireAuth, async (req, res) => {
   try {
     const [settingsRows] = await pool.query("SELECT setting_key, setting_val FROM settings");
     const settings = Object.fromEntries(settingsRows.map(r => [r.setting_key, r.setting_val]));
-    const [overrideRows] = await pool.query("SELECT * FROM day_overrides WHERE date = ?", [date]);
-    const override = overrideRows[0] || null;
-    let lunchSlots = !override?.no_lunch ? generateSlots(override?.lunch_open || settings.kitchen_open_lunch || "12:00", override?.lunch_close || settings.kitchen_close_lunch || "14:30") : [];
-    let dinnerSlots = !override?.no_dinner ? generateSlots(override?.dinner_open || settings.kitchen_open_dinner || "17:00", override?.dinner_close || settings.kitchen_close_dinner || "21:30") : [];
+    const { lunchSlots, dinnerSlots } = await getEffectiveTimes(date, settings);
     for (const slot of [...lunchSlots, ...dinnerSlots]) {
       await pool.query(
         `INSERT INTO blocked_slots (date, time_slot, reason) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE reason = VALUES(reason)`,
@@ -165,9 +161,7 @@ router.post("/:date/block-all", requireAuth, async (req, res) => {
       );
     }
     res.json({ message: "Hele dag geblokkeerd" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // DELETE /api/slots/:date/block-all
@@ -176,12 +170,10 @@ router.delete("/:date/block-all", requireAuth, async (req, res) => {
   try {
     await pool.query("DELETE FROM blocked_slots WHERE date = ?", [date]);
     res.json({ message: "Dag vrijgegeven" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// PUT /api/slots/:date/override — dag specifieke tijden instellen
+// PUT /api/slots/:date/override
 router.put("/:date/override", requireAuth, async (req, res) => {
   const { date } = req.params;
   const { lunch_open, lunch_close, dinner_open, dinner_close, no_lunch, no_dinner } = req.body;
@@ -190,26 +182,22 @@ router.put("/:date/override", requireAuth, async (req, res) => {
       `INSERT INTO day_overrides (date, lunch_open, lunch_close, dinner_open, dinner_close, no_lunch, no_dinner)
        VALUES (?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
-         lunch_open = VALUES(lunch_open), lunch_close = VALUES(lunch_close),
-         dinner_open = VALUES(dinner_open), dinner_close = VALUES(dinner_close),
-         no_lunch = VALUES(no_lunch), no_dinner = VALUES(no_dinner)`,
-      [date, lunch_open || null, lunch_close || null, dinner_open || null, dinner_close || null, no_lunch ? 1 : 0, no_dinner ? 1 : 0]
+         lunch_open=VALUES(lunch_open), lunch_close=VALUES(lunch_close),
+         dinner_open=VALUES(dinner_open), dinner_close=VALUES(dinner_close),
+         no_lunch=VALUES(no_lunch), no_dinner=VALUES(no_dinner)`,
+      [date, lunch_open||null, lunch_close||null, dinner_open||null, dinner_close||null, no_lunch?1:0, no_dinner?1:0]
     );
     res.json({ message: "Tijden opgeslagen" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// DELETE /api/slots/:date/override — reset naar standaard tijden
+// DELETE /api/slots/:date/override
 router.delete("/:date/override", requireAuth, async (req, res) => {
   const { date } = req.params;
   try {
     await pool.query("DELETE FROM day_overrides WHERE date = ?", [date]);
     res.json({ message: "Teruggezet naar standaard" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 export default router;
