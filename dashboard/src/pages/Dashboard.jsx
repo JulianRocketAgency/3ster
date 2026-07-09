@@ -131,8 +131,8 @@ function ReservationRow({ res, onStatusChange, onCancelClick, nav }) {
 function DayCard({ date, reservations, onStatusChange, onCancelClick, isToday, nav, isClosed, closedReason, isRegularClosed }) {
   const [open, setOpen] = useState(isToday && !isClosed && !isRegularClosed);
   const dayName = DAYS[date.getDay()===0?6:date.getDay()-1];
-  const count = reservations.length;
-  const guests = reservations.reduce((s,r) => s+(r.guests||0), 0);
+  const count = reservations.filter(r => r.status !== "cancelled").length;
+  const guests = reservations.filter(r => r.status !== "cancelled").reduce((s,r) => s+(r.guests||0), 0);
   const pending = reservations.filter(r => r.status==="pending").length;
 
   // Gesloten dag styling
@@ -277,8 +277,8 @@ export default function Dashboard({ nav }) {
   });
 
   const weekRes = reservations.filter(r => weekDates.some(d => fmt(d)===r.date));
-  const totalWeek = weekRes.length;
-  const totalGuests = weekRes.reduce((s,r) => s+(r.guests||0), 0);
+  const totalWeek = weekRes.filter(r => r.status !== "cancelled").length;
+  const totalGuests = weekRes.filter(r => r.status !== "cancelled").reduce((s,r) => s+(r.guests||0), 0);
   const totalPending = weekRes.filter(r => r.status==="pending").length;
 
   return (
