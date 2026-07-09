@@ -131,7 +131,8 @@ function ReservationRow({ res, onStatusChange, onCancelClick, nav }) {
 function DayCard({ date, reservations, onStatusChange, onCancelClick, isToday, nav, isClosed, closedReason, isRegularClosed }) {
   const [open, setOpen] = useState(isToday && !isClosed && !isRegularClosed);
   const dayName = DAYS[date.getDay()===0?6:date.getDay()-1];
-  const count = reservations.filter(r => r.status !== "cancelled").length;
+  const count = reservations.length;
+  const countActive = reservations.filter(r => r.status !== "cancelled").length;
   const guests = reservations.filter(r => r.status !== "cancelled").reduce((s,r) => s+(r.guests||0), 0);
   const pending = reservations.filter(r => r.status==="pending").length;
 
@@ -190,7 +191,7 @@ function DayCard({ date, reservations, onStatusChange, onCancelClick, isToday, n
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             {count > 0 ? (
               <>
-                <span style={{ fontSize:12, color:"#86868b" }}>{count} reservering{count!==1?"en":""} · {guests} gast{guests!==1?"en":""}</span>
+                <span style={{ fontSize:12, color:"#86868b" }}>{countActive} reservering{countActive!==1?"en":""} · {guests} gast{guests!==1?"en":""}</span>
                 {pending > 0 && <span style={{ background:"#ff9f0a18", color:"#ff9f0a", fontSize:12, fontWeight:500, padding:"2px 8px", borderRadius:20 }}>{pending} nieuw</span>}
               </>
             ) : <span style={{ fontSize:12, color:"#c7c7cc" }}>Geen reserveringen</span>}
