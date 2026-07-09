@@ -13,7 +13,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({
+  origin: [
+    'https://3ster.nl',
+    'https://www.3ster.nl',
+    'https://3ster.vendelict.nl',
+    'https://reserveringen.3ster.nl',
+    'https://3ster.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+  ],
+  credentials: true,
+}));
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
