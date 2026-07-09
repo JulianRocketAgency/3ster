@@ -32,7 +32,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function PendingModal({ reservations, onStatusChange, onClose }) {
+function PendingModal({ reservations, onStatusChange, onCancelClick, onClose }) {
   const pending = reservations.filter(r => r.status === "pending");
   return (
     <div style={{ position:"fixed", inset:0, zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
@@ -66,7 +66,7 @@ function PendingModal({ reservations, onStatusChange, onClose }) {
               </div>
               <div style={{ display:"flex", gap:8 }}>
                 <button onClick={() => onStatusChange(r.id,"confirmed")} style={{ flex:1, padding:"9px 0", borderRadius:8, border:"none", cursor:"pointer", background:"#30d158", color:"#fff", fontSize:13, fontWeight:500, fontFamily:"inherit" }}>✓ Bevestigen</button>
-                <button onClick={() => onStatusChange(r.id,"cancelled")} style={{ flex:1, padding:"9px 0", borderRadius:8, border:"1px solid #e5e5ea", cursor:"pointer", background:"#fff", color:"#ff3b30", fontSize:13, fontWeight:500, fontFamily:"inherit" }}>✕ Annuleren</button>
+                <button onClick={() => onCancelClick(r)} style={{ padding:"7px 14px", borderRadius:8, border:"1px solid #e5e5ea", cursor:"pointer", background:"#fff", color:"#ff3b30", fontSize:12, fontWeight:500, fontFamily:"inherit" }}>Annuleren</button>
               </div>
             </div>
           ))}
@@ -83,7 +83,7 @@ function PendingModal({ reservations, onStatusChange, onClose }) {
   );
 }
 
-function ReservationRow({ res, onStatusChange, nav }) {
+function ReservationRow({ res, onStatusChange, onCancelClick, nav }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const changeStatus = async (status) => {
@@ -119,7 +119,7 @@ function ReservationRow({ res, onStatusChange, nav }) {
           </div>
           <div style={{ display:"flex", gap:8 }}>
             {res.status!=="confirmed" && res.status!=="cancelled" && <button onClick={() => changeStatus("confirmed")} disabled={loading} style={{ flex:1, padding:"8px 0", borderRadius:8, border:"none", cursor:"pointer", background:"#30d158", color:"#fff", fontSize:13, fontWeight:500, opacity:loading?0.6:1 }}>Bevestigen</button>}
-            {res.status!=="cancelled" && <button onClick={() => changeStatus("cancelled")} disabled={loading} style={{ flex:1, padding:"8px 0", borderRadius:8, border:"1px solid #e5e5ea", cursor:"pointer", background:"#fff", color:"#ff3b30", fontSize:13, fontWeight:500, opacity:loading?0.6:1 }}>Annuleren</button>}
+            {res.status!=="cancelled" && <button onClick={() => onCancelClick(res)} style={{ padding:"7px 14px", borderRadius:8, border:"1px solid #e5e5ea", cursor:"pointer", background:"#fff", color:"#ff3b30", fontSize:12, fontWeight:500, fontFamily:"inherit" }}>Annuleren</button>}
             {res.status==="cancelled" && <button onClick={() => changeStatus("pending")} disabled={loading} style={{ flex:1, padding:"8px 0", borderRadius:8, border:"1px solid #e5e5ea", cursor:"pointer", background:"#fff", color:"#86868b", fontSize:13, fontWeight:500 }}>Herstellen</button>}
           </div>
         </div>
@@ -128,7 +128,7 @@ function ReservationRow({ res, onStatusChange, nav }) {
   );
 }
 
-function DayCard({ date, reservations, onStatusChange, isToday, nav, isClosed, closedReason, isRegularClosed }) {
+function DayCard({ date, reservations, onStatusChange, onCancelClick, isToday, nav, isClosed, closedReason, isRegularClosed }) {
   const [open, setOpen] = useState(isToday && !isClosed && !isRegularClosed);
   const dayName = DAYS[date.getDay()===0?6:date.getDay()-1];
   const count = reservations.length;
@@ -214,7 +214,7 @@ function DayCard({ date, reservations, onStatusChange, isToday, nav, isClosed, c
             ? <p style={{ fontSize:13, color:"#c7c7cc", textAlign:"center", padding:"24px 0" }}>Geen reserveringen op deze dag</p>
             : <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:12 }}>
                 {reservations.sort((a,b) => a.time.localeCompare(b.time)).map(r =>
-                  <ReservationRow key={r.id} res={r} onStatusChange={onStatusChange} nav={nav}/>)}
+                  <ReservationRow key={r.id} res={r} onStatusChange={onStatusChange} onCancelClick={onCancelClick} nav={nav}/>)}
               </div>}
         </div>
       )}
@@ -298,7 +298,7 @@ export default function Dashboard({ nav }) {
         />
       )}
       {showPending && (
-        <PendingModal reservations={weekRes} onStatusChange={handleStatusChange} onClose={() => setShowPending(false)}/>
+        <PendingModal reservations={weekRes} onStatusChange={handleStatusChange} onCancelClick={setCancelTarget} onClose={() => setShowPending(false)}/>
       )}
       <style>{`
         .week-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
@@ -358,7 +358,7 @@ export default function Dashboard({ nav }) {
         : <div className="days">
             {resByDay.map(({ date, reservations, isToday, isClosed, closedReason, isRegularClosed }) =>
               <DayCard key={fmt(date)} date={date} reservations={reservations}
-                onStatusChange={handleStatusChange} isToday={isToday} nav={nav}
+                onStatusChange={handleStatusChange} onCancelClick={setCancelTarget} isToday={isToday} nav={nav}
                 isClosed={isClosed} closedReason={closedReason} isRegularClosed={isRegularClosed}/>)}
           </div>}
     </Layout>
