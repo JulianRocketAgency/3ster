@@ -107,7 +107,7 @@
     try {
       const r = await fetch(`${API}/api/slots/${date}`);
       const d = await r.json();
-      state.slots = Array.isArray(d) ? d : [];
+      state.slots = Array.isArray(d) ? d : Array.isArray(d?.slots) ? d.slots : [];
       state.dayStatus = state.slots.filter(s => s.available).length > 0 ? 'open' : 'no_slots';
     } catch(e) { state.slots = []; state.dayStatus = 'no_slots'; }
     state.loadingSlots = false;
