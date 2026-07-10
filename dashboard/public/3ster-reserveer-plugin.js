@@ -262,7 +262,7 @@
         cursor: pointer; transition: all 0.15s;
       }
       .ds-g:hover { border-color: ${C.accent}; }
-      .ds-g.ds-sel { background: ${C.accent}; border-color: ${C.accent}; color: #fff; }
+      .ds-g.ds-sel { background: ${C.bg}; border-color: ${C.bg}; color: #f5e6c8; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
 
       .ds-period { font-family: ${FONT_UI}; font-size: 11px; font-weight: 500; color: ${C.muted}; text-transform: uppercase; letter-spacing: 0.08em; margin: 14px 0 8px; }
       .ds-slots { display: flex; flex-wrap: wrap; gap: 7px; }
@@ -273,7 +273,7 @@
         cursor: pointer; transition: all 0.15s;
       }
       .ds-slot:hover { border-color: ${C.accent}; }
-      .ds-slot.ds-sel { background: ${C.accent}; border-color: ${C.accent}; color: #fff; }
+      .ds-slot.ds-sel { background: ${C.bg}; border-color: ${C.bg}; color: #f5e6c8; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
 
       .ds-btn {
         width: 100%; padding: 14px; border: none; border-radius: 10px;
