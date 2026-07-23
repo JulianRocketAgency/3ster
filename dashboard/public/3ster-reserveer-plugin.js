@@ -100,6 +100,9 @@
   async function loadSlots(date) {
     state.loadingSlots = true; state.time = ''; state.dayStatus = null;
     render();
+    // Check minimale aanlooptijd (60 minuten)
+    const MIN_MINUTES_AHEAD = 60;
+
     if (isDayClosed(date)) {
       state.slots = []; state.loadingSlots = false; state.dayStatus = 'closed';
       render(); return;
@@ -110,7 +113,19 @@
       if (d && d.isClosed) {
         state.slots = []; state.dayStatus = 'closed';
       } else {
-        state.slots = Array.isArray(d) ? d : (d && Array.isArray(d.slots)) ? d.slots : [];
+        let rawSlots = Array.isArray(d) ? d : (d && Array.isArray(d.slots)) ? d.slots : [];
+
+      // Filter slots die te dichtbij zijn als het vandaag is
+      const nowDate = new Date();
+      const todayStr = nowDate.getFullYear() + '-' + String(nowDate.getMonth()+1).padStart(2,'0') + '-' + String(nowDate.getDate()).padStart(2,'0');
+      if (date === todayStr) {
+        const nowMinutes = nowDate.getHours() * 60 + nowDate.getMinutes() + MIN_MINUTES_AHEAD;
+        rawSlots = rawSlots.filter(s => {
+          const [h, m] = s.time.split(':').map(Number);
+          return (h * 60 + m) >= nowMinutes;
+        });
+      }
+      state.slots = rawSlots;
         state.dayStatus = state.slots.filter(s => s.available).length > 0 ? 'open' : 'no_slots';
       }
     } catch(e) { state.slots = []; state.dayStatus = 'no_slots'; }
