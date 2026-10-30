@@ -17,6 +17,8 @@ router.get("/", async (req, res) => {
       return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
     };
     settings.closed_dates = closed.map(d => ({ ...d, date: fmtD(d.date) }));
+    const [extraOpen] = await pool.query("SELECT date FROM extra_open_dates ORDER BY date ASC");
+    settings.extra_open_dates = extraOpen.map(d => fmtD(d.date));
     res.json(settings);
   } catch (err) {
     console.error(err);

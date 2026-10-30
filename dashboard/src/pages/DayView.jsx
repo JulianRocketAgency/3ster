@@ -79,7 +79,9 @@ export default function DayView({ date, nav }) {
       const openDays = (settings.open_days||"").split(",").filter(Boolean).map(Number);
       const closedDates = Array.isArray(settings.closed_dates) ? settings.closed_dates : [];
       const jsDay = new Date(date+"T12:00:00").getDay();
-      setIsClosed(!openDays.includes(jsDay) || closedDates.some(c => c.date && c.date.slice(0,10)===date));
+      const extraOpen = Array.isArray(settings.extra_open_dates) ? settings.extra_open_dates : [];
+      const isExtraClosed = closedDates.some(c => c.date && c.date.slice(0,10)===date);
+      setIsClosed(isExtraClosed || (!extraOpen.includes(date) && !openDays.includes(jsDay)));
 
       setLoading(false);
     }).catch(() => setLoading(false));

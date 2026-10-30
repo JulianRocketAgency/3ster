@@ -79,8 +79,11 @@
     if (!state.settings) return false;
     const open = (state.settings.open_days || '').split(',').filter(Boolean).map(Number);
     const extra = Array.isArray(state.settings.closed_dates) ? state.settings.closed_dates : [];
+    const extraOpen = Array.isArray(state.settings.extra_open_dates) ? state.settings.extra_open_dates : [];
     const day = new Date(d + 'T12:00:00').getDay();
-    return !open.includes(day) || extra.some(c => c.date && c.date.slice(0,10) === d);
+    if (extra.some(c => c.date && c.date.slice(0,10) === d)) return true;
+    if (extraOpen.includes(d)) return false;
+    return !open.includes(day);
   }
 
   function getClosedReason(d) {

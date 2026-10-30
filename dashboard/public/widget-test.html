@@ -102,10 +102,12 @@ function isDayClosed(dateStr) {
   if (!state.settings) return false;
   const openDays = (state.settings.open_days || "").split(",").filter(Boolean).map(Number);
   const closedDates = Array.isArray(state.settings.closed_dates) ? state.settings.closed_dates : [];
+  const extraOpen = Array.isArray(state.settings.extra_open_dates) ? state.settings.extra_open_dates : [];
   const jsDay = new Date(dateStr + "T12:00:00").getDay();
-  const isRegular = !openDays.includes(jsDay);
   const isExtra = closedDates.some(c => c.date && c.date.slice(0,10) === dateStr);
-  return isRegular || isExtra;
+  if (isExtra) return true;
+  if (extraOpen.includes(dateStr)) return false;
+  return !openDays.includes(jsDay);
 }
 
 function getClosedReason(dateStr) {
