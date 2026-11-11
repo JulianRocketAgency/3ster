@@ -28,7 +28,8 @@ router.get("/", async (req, res) => {
 
 // PUT /api/settings
 router.put("/", requireAuth, async (req, res) => {
-  const { closed_dates, ...rest } = req.body;
+  // extra_open_dates is read-only here (managed via /api/weekly)
+  const { closed_dates, extra_open_dates, ...rest } = req.body;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
