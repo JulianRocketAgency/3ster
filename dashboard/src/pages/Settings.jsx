@@ -98,6 +98,14 @@ export default function Settings({ nav }) {
     setSavingWeekly(null); setSavedWeekly(dayVal); setTimeout(() => setSavedWeekly(null), 2000);
   };
 
+  const extraTimesLabel = (d) => {
+    const lunch = d.no_lunch ? "geen lunch" : (d.lunch_open && d.lunch_close ? `lunch ${d.lunch_open.slice(0,5)}–${d.lunch_close.slice(0,5)}` : "");
+    const dinner = d.no_dinner ? "geen diner" : (d.dinner_open && d.dinner_close ? `diner ${d.dinner_open.slice(0,5)}–${d.dinner_close.slice(0,5)}` : "");
+    return [lunch, dinner].filter(Boolean).join(", ");
+  };
+
+  const setExtra = (key, val) => setNewExtraOpen(p => ({ ...p, [key]: val }));
+
   const addExtraOpen = async () => {
     if (!newExtraOpen.date) return;
     await fetch(`${API}/api/weekly/extra-open`, {
@@ -276,14 +284,14 @@ export default function Settings({ nav }) {
           <div className="section">
             <div className="section-title">Extra open dagen</div>
             <p style={{ fontSize:13, color:"#86868b", marginBottom:12 }}>
-              Open op een dag die normaal gesloten is (bijv. kerstavond op een donderdag). Tijden volgen de standaard openingstijden. Wordt automatisch opgeslagen.
+              Open op een dag die normaal gesloten is (bijv. kerstavond op een donderdag). Tijden staan standaard op de openingstijden van de keuken en zijn per dag aan te passen. Wordt automatisch opgeslagen.
             </p>
             {extraOpenDates.length > 0 && (
               <div className="closed-list">
                 {[...extraOpenDates].sort((a,b)=>a.date.localeCompare(b.date)).map(d => (
                   <div key={d.date} className="closed-item" style={{ background:"#34c759" }}>
                     <span className="closed-date">{new Date(d.date+"T12:00:00").toLocaleDateString("nl-NL",{day:"numeric",month:"long",year:"numeric"})}</span>
-                    <span className="closed-reason">{d.reason||"—"}</span>
+                    <span className="closed-reason">{[d.reason, extraTimesLabel(d)].filter(Boolean).join(" · ") || "—"}</span>
                     <button className="remove-btn" onClick={() => removeExtraOpen(d.date)}>✕ Verwijderen</button>
                   </div>
                 ))}
@@ -293,6 +301,26 @@ export default function Settings({ nav }) {
               <input className="add-input" type="date" value={newExtraOpen.date} onChange={e => setNewExtraOpen(p => ({ ...p, date:e.target.value }))} style={{ flex:"0 0 auto" }}/>
               <input className="add-input" type="text" placeholder="Reden (bijv. Kerstavond)" value={newExtraOpen.reason} onChange={e => setNewExtraOpen(p => ({ ...p, reason:e.target.value }))} style={{ flex:1, minWidth:120 }} onKeyDown={e => e.key==="Enter" && addExtraOpen()}/>
               <button className="add-btn" onClick={addExtraOpen} disabled={!newExtraOpen.date}>Toevoegen</button>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))", gap:16, marginTop:14 }}>
+              {[["lunch","Lunch","no_lunch","kitchen_open_lunch","kitchen_close_lunch","12:00","14:30"],
+                ["dinner","Diner","no_dinner","kitchen_open_dinner","kitchen_close_dinner","17:00","21:30"]].map(([k,label,noKey,openSet,closeSet,defOpen,defClose]) => (
+                <div key={k}>
+                  <div style={{ fontSize:12, color:"#86868b", marginBottom:8 }}>{label}</div>
+                  <label className="check-row" style={{ marginBottom:8 }}>
+                    <input type="checkbox" checked={!!newExtraOpen[noKey]} onChange={e => setExtra(noKey, e.target.checked)}/>
+                    Geen {label.toLowerCase()} op deze dag
+                  </label>
+                  <div className="field-row">
+                    <div className="field"><label>Open</label>
+                      <input type="time" disabled={!!newExtraOpen[noKey]} value={newExtraOpen[k+"_open"] || settings[openSet] || defOpen} onChange={e => setExtra(k+"_open", e.target.value)}/>
+                    </div>
+                    <div className="field"><label>Gesloten</label>
+                      <input type="time" disabled={!!newExtraOpen[noKey]} value={newExtraOpen[k+"_close"] || settings[closeSet] || defClose} onChange={e => setExtra(k+"_close", e.target.value)}/>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
