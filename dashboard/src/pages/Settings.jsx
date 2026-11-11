@@ -23,7 +23,7 @@ export default function Settings({ nav }) {
   const [savedWeekly, setSavedWeekly] = useState(null);
   const [extraOpenDates, setExtraOpenDates] = useState([]);
   const [closedPeriods, setClosedPeriods] = useState([]);
-  const [newExtraOpen, setNewExtraOpen] = useState({ date:"", reason:"", lunch_open:"12:00", lunch_close:"14:30", dinner_open:"17:00", dinner_close:"21:30", no_lunch:false, no_dinner:false });
+  const [newExtraOpen, setNewExtraOpen] = useState({ date:"", reason:"", lunch_open:"", lunch_close:"", dinner_open:"", dinner_close:"", no_lunch:false, no_dinner:false });
   const [newPeriod, setNewPeriod] = useState({ date_from:"", date_to:"", reason:"" });
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function Settings({ nav }) {
       if (Array.isArray(w?.weekly)) w.weekly.forEach(row => { wMap[row.day_of_week] = row; });
       else if (Array.isArray(w)) w.forEach(row => { wMap[row.day_of_week] = row; });
       setWeeklyOverrides(wMap);
-      setExtraOpenDates(Array.isArray(w?.extraOpen) ? w.extraOpen : []);
+      setExtraOpenDates(Array.isArray(w?.extraOpen) ? w.extraOpen.map(d => ({ ...d, date: String(d.date).slice(0,10) })) : []);
       setClosedPeriods(Array.isArray(w?.closedPeriods) ? w.closedPeriods : []);
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -105,7 +105,7 @@ export default function Settings({ nav }) {
       body: JSON.stringify(newExtraOpen),
     });
     setExtraOpenDates(prev => [...prev.filter(d => d.date !== newExtraOpen.date), { ...newExtraOpen }]);
-    setNewExtraOpen({ date:"", reason:"", lunch_open:"12:00", lunch_close:"14:30", dinner_open:"17:00", dinner_close:"21:30", no_lunch:false, no_dinner:false });
+    setNewExtraOpen({ date:"", reason:"", lunch_open:"", lunch_close:"", dinner_open:"", dinner_close:"", no_lunch:false, no_dinner:false });
   };
 
   const removeExtraOpen = async (date) => {
@@ -270,6 +270,29 @@ export default function Settings({ nav }) {
               <input className="add-input" type="date" value={newDate} onChange={e => setNewDate(e.target.value)} style={{ flex:"0 0 auto" }}/>
               <input className="add-input" type="text" placeholder="Reden (bijv. Pasen)" value={newReason} onChange={e => setNewReason(e.target.value)} style={{ flex:1, minWidth:120 }} onKeyDown={e => e.key==="Enter" && addClosedDate()}/>
               <button className="add-btn" onClick={addClosedDate} disabled={!newDate||saving}>{saving?"Opslaan…":"Toevoegen"}</button>
+            </div>
+          </div>
+
+          <div className="section">
+            <div className="section-title">Extra open dagen</div>
+            <p style={{ fontSize:13, color:"#86868b", marginBottom:12 }}>
+              Open op een dag die normaal gesloten is (bijv. kerstavond op een donderdag). Tijden volgen de standaard openingstijden. Wordt automatisch opgeslagen.
+            </p>
+            {extraOpenDates.length > 0 && (
+              <div className="closed-list">
+                {[...extraOpenDates].sort((a,b)=>a.date.localeCompare(b.date)).map(d => (
+                  <div key={d.date} className="closed-item" style={{ background:"#34c759" }}>
+                    <span className="closed-date">{new Date(d.date+"T12:00:00").toLocaleDateString("nl-NL",{day:"numeric",month:"long",year:"numeric"})}</span>
+                    <span className="closed-reason">{d.reason||"—"}</span>
+                    <button className="remove-btn" onClick={() => removeExtraOpen(d.date)}>✕ Verwijderen</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="add-row">
+              <input className="add-input" type="date" value={newExtraOpen.date} onChange={e => setNewExtraOpen(p => ({ ...p, date:e.target.value }))} style={{ flex:"0 0 auto" }}/>
+              <input className="add-input" type="text" placeholder="Reden (bijv. Kerstavond)" value={newExtraOpen.reason} onChange={e => setNewExtraOpen(p => ({ ...p, reason:e.target.value }))} style={{ flex:1, minWidth:120 }} onKeyDown={e => e.key==="Enter" && addExtraOpen()}/>
+              <button className="add-btn" onClick={addExtraOpen} disabled={!newExtraOpen.date}>Toevoegen</button>
             </div>
           </div>
 
